@@ -1,0 +1,5 @@
+{
+  "name": "Quizzle AI",
+  "description": "A comprehensive educational tool featuring AI-powered MCQ generation from documents, an intelligent tutor chatbot, high-fidelity image generation for visual aids, and text-to-speech capabilities.",
+  "requestFramePermissions": []
+}
