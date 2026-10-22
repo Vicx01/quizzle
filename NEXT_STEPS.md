@@ -2,7 +2,7 @@
 
 **Current phase:** Phase 3 — application foundation (COMPLETE, accessibility fixes applied)
 
-**Status:** Foundation built and all checks green. **WCAG AA contrast RESOLVED.** **Firebase integration is prepared but UNVERIFIED — the current blocker is missing credentials.** Google sign-in has never been executed against a real Firebase project. AI/backend deliberately NOT implemented.
+**Status:** Foundation built and all checks green. **WCAG AA contrast RESOLVED.** **Firebase credentials supplied and config verified locally; the Google sign-in flow is still UNVERIFIED and needs a browser test.** AI/backend deliberately NOT implemented.
 
 **Last updated:** 2026-10-22
 
@@ -10,56 +10,67 @@
 
 ---
 
-## Current blocker — Firebase credentials (ACTION REQUIRED)
+## Current status — Firebase configured, sign-in UNVERIFIED
 
-The app cannot get past the sign-in screen because Firebase is not configured.
-Everything needed is in place **except the four values below**.
+Credentials are now supplied in `.env` (gitignored, never committed). The config
+check passes: `getFirebaseConfigStatus()` returns `ok: true` with no errors and
+no warnings, and Expo inlines all values into the bundle.
 
-### Supply these in `.env`
+**The Google sign-in flow has still not been executed.** It must be verified in a
+browser (see below). Do not describe authentication as working until step 5
+succeeds.
+
+### Add this domain to Firebase — likely the remaining blocker
+
+Firebase → **Authentication → Settings → Authorized domains → Add domain**:
 
 ```
-cp .env.example .env
+8080-ihvd80mwkmpx5vxcn6r60.e2b.app
 ```
 
-| Variable                           | Source                                                                                  |
-| ---------------------------------- | --------------------------------------------------------------------------------------- |
-| `EXPO_PUBLIC_FIREBASE_API_KEY`     | Firebase Console → Project settings → General → Your apps → SDK setup and configuration |
-| `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN` | same block (`<project-id>.firebaseapp.com`)                                             |
-| `EXPO_PUBLIC_FIREBASE_PROJECT_ID`  | same block                                                                              |
-| `EXPO_PUBLIC_FIREBASE_APP_ID`      | same block                                                                              |
+This is the current Arena preview host. **The sandbox ID changes between
+sessions**, so if sign-in later fails with `auth/unauthorized-domain`, re-read the
+origin from the error message the app prints and add that instead. Keep
+`localhost` in the list for local runs.
 
-Then **restart the dev server** — `EXPO_PUBLIC_*` is inlined at build time.
+### How to verify (requires your browser)
 
-### Also required in the Firebase Console
+1. Open the preview and confirm you see **"Sign in to Quizzle"** with a working
+   **Sign in with Google** button — _not_ the "Finish Firebase setup" checklist.
+2. Click it. Expect: Google account chooser → consent → back on the Generate screen.
+3. Reload — you should stay signed in.
+4. Firebase Console → Authentication → Users should show a new user.
+5. Report back, and the result will be recorded in `CHANGELOG.md`.
 
-1. **Authentication → Sign-in method → Google → Enable.**
-2. **Authentication → Settings → Authorized domains** — add the origin you are
-   browsing from. The Arena preview host (e.g. `8080-<sandbox-id>.e2b.app`)
-   **must** be added or sign-in fails with `auth/unauthorized-domain`.
-3. **OAuth consent screen** (Google Cloud) — if External/Testing, add test users.
+If the popup hangs or is blocked, **open the preview URL in a normal browser tab**
+rather than the embedded iframe — embedded previews often block popups and
+third-party cookies, which breaks the Firebase popup flow.
+
+### Why it could not be verified here
+
+The sandbox cannot reach Firebase at all (outbound network is restricted to
+github/npm/pypi; `identitytoolkit.googleapis.com` and the auth domain both fail
+to connect). Config wiring was verified by running the real
+`getFirebaseConfigStatus()` against the supplied values, but the OAuth handshake
+can only be completed from a browser.
+
+### Console steps that were also required
+
+1. Authentication → Sign-in method → **Google → Enable**
+2. Authorized domains (above)
+3. Google Cloud → OAuth consent screen → add test users if External/Testing
 
 Full walkthrough: `docs/FIREBASE_SETUP.md`.
 
-### What the app does now when config is missing
-
-Instead of a sign-in button that silently fails, it shows **"Finish Firebase
-setup"** listing exactly which variables are missing or still placeholders, and
-what to do. Verified by tests (`screens/__tests__/SignIn.test.tsx`).
-
 ### Security
 
-- The four values are Firebase _web_ config — public by design, not secrets.
-  Access is enforced by Firestore security rules (not yet written) and the
-  Authorized Domains allowlist.
-- `.env` and all `.env.*` variants are gitignored; only `.env.example` is
-  tracked. **The previous `.env*.local` pattern did not ignore plain `.env` —
-  this was fixed.**
-- Verified: no credential-shaped strings in tracked files; no `.env` tracked.
-
-### Sign-in is NOT verified
-
-Do not describe authentication as working. It has never run against a real
-project. Verification steps are in `docs/FIREBASE_SETUP.md` §5.
+- `.env` is gitignored; only `.env.example` is tracked. Verified: no `.env` in
+  `git status`, no credential-shaped strings in tracked files.
+- Firebase web config is public by design; access is enforced by Firestore
+  security rules (**not yet written**) and the Authorized Domains allowlist.
+- These credentials were shared in conversation. They grant no data access by
+  themselves, but you can rotate the API key in Google Cloud Console if you want
+  them out of the chat history.
 
 ---
 

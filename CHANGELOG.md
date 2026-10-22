@@ -542,3 +542,84 @@ than running it.
 AI-provider integration remains deferred per owner instruction, until
 authentication works and the remaining backend prerequisites are addressed.
 Firestore and the server-side API layer are still not implemented.
+
+---
+
+## 2026-10-22 — Firebase credentials supplied; config verified, sign-in still UNVERIFIED
+
+The owner supplied the real Firebase web config for their Quizzle project. The
+values live in `.env` (gitignored) and are deliberately **not recorded here**.
+
+### What was done
+
+- Wrote the supplied values to `.env` (gitignored — **not committed, not staged**).
+  All seven values incl. `measurementId`, which the app does not use (no Analytics
+  SDK is imported).
+- Confirmed `.env` is gitignored and absent from `git status`.
+- Restarted the dev server. Expo reported:
+  `env: load .env` and exported all seven `EXPO_PUBLIC_FIREBASE_*` variables.
+- Verified the values are **inlined into the served bundle**: project id, API key,
+  auth domain and app id all present in `index.bundle`.
+- Verified the config check passes using the **real production code**: ran
+  `getFirebaseConfigStatus()` with the supplied values against
+  `services/firebase.ts` → `{ ok: true, errors: [], warnings: [] }`.
+  (A temporary test was used for this and then deleted.)
+
+Consequence: the app now renders the real **"Sign in with Google"** button instead
+of the "Finish Firebase setup" checklist.
+
+### What was NOT verified — sign-in
+
+**The Google sign-in flow has not been executed.** Two reasons:
+
+1. **The sandbox cannot reach Firebase at all.** Outbound network is restricted to
+   github/npm/pypi. `identitytoolkit.googleapis.com` and
+   the project's auth domain both fail to connect (HTTP 000). A live OAuth
+   handshake is impossible from here.
+2. Sign-in is interactive — it needs a real Google account in a browser.
+
+Only the owner's browser can complete it. Do not describe authentication as
+working until that test succeeds.
+
+### Action required from the owner
+
+**Add the preview host to Firebase Authorized Domains** (most likely remaining
+blocker):
+
+```
+8080-ihvd80mwkmpx5vxcn6r60.e2b.app
+```
+
+Firebase Console → Authentication → Settings → Authorized domains → Add domain.
+The sandbox ID changes between sessions, so if sign-in later fails with
+`auth/unauthorized-domain`, add the origin printed in the app's error message.
+
+Also confirm: Google provider enabled; OAuth consent screen test users added if
+External/Testing.
+
+If the popup hangs or is blocked, open the preview URL in a **normal browser
+tab** — embedded iframe previews commonly block popups and third-party cookies,
+which breaks the Firebase popup flow.
+
+### Security note
+
+These credentials were shared in conversation. Firebase **web** config is public
+by design (it ships in every Firebase web app's client bundle) and grants no data
+access on its own — access is governed by Firestore security rules (still not
+written) and the Authorized Domains allowlist. If you would rather they were not
+in chat history, rotate the API key in Google Cloud Console → Credentials.
+
+**No credentials were committed.** `.env` is gitignored and only `.env.example`
+(placeholders) is tracked.
+
+### Checks
+
+tsc 0 errors · eslint 0 errors / 7 warnings · prettier clean · jest 118 passed /
+12 suites · expo web bundle 271 modules, HTTP 200.
+
+### Still outstanding
+
+- Browser verification of Google sign-in (owner)
+- Firestore security rules — **none exist yet**, so there is no data-access
+  control until these are written
+- Server-side API layer, AI provider integration (deferred per owner instruction)
