@@ -1,7 +1,7 @@
 # Quizzle — Next Steps
 
-**Current phase:** Phase 2 — design system and UX (prototype)  
-**Status:** Design system APPROVED with conditions; Generate-screen prototype in progress  
+**Current phase:** Phase 2 — design system and UX (prototype complete)  
+**Status:** Design system APPROVED with conditions; Generate-screen prototype COMPLETE — ready for owner review  
 **Last updated:** 2026-10-22  
 **Branch:** `arena/9131a5e6-quizzle`
 
@@ -57,8 +57,8 @@ Architecture documented in `ARCHITECTURE.md` (provisionally approved): Expo + Re
 - [x] Accessibility and keyboard behaviour defined.
 - [x] Light/dark theme behaviour defined.
 - [x] Owner approval of design direction (obtained with conditions).
-- [ ] Generate-screen prototype implemented with design tokens.
-- [ ] Prototype shown at mobile + desktop widths in light + dark themes.
+- [x] Generate-screen prototype implemented with design tokens.
+- [x] Prototype shown at mobile + desktop widths in light + dark themes.
 - [ ] WCAG AA contrast verification (condition 1) — pending.
 
 ## Remaining approvals before Phase 3 implementation
