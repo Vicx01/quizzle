@@ -528,15 +528,22 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 
 ## 15. Approval gate
 
-**Proposed (not yet implemented):** The design system above (colours, typography, components, screen specs) is complete but **not yet approved for implementation**.
+**Status:** APPROVED with conditions (owner, 2026-10-22). The design system is approved for implementation of a representative Generate-screen prototype only — not all nine screens.
 
-Per Rule 5, do not build every screen until the owner reviews and approves this design direction. The recommended next step is a small representative screen (e.g., the home quiz-generation screen) implemented as a prototype for review, then expansion.
+### Owner approval conditions
+1. Keep the documented palette provisionally, but **verify WCAG AA contrast in light and dark themes before finalising the tokens**.
+2. Keep the tab order: **Generate, History, Share, Account**.
+3. Keep **one-question-at-a-time quiz navigation**, including Previous/Next controls and a **review step before final submission**.
+4. Keep theme controls in **Account/Settings**, with **Light, Dark, and System** options.
+5. Ensure the specifications cover **quota exhaustion, generation failures, expired share links, deleted quizzes, and empty states**.
 
-**Feedback requested on:**
-1. Colour palette (light/dark tokens) — acceptable or needs adjustment?
-2. Tab bar navigation (Generate, History, Share, Account) — correct labels/order?
-3. One-question-at-a-time quiz layout — acceptable for university study use?
-4. Theme toggle in Settings only (not header) — acceptable?
-5. Any screen missing or mis-specified?
+### Next step (prototype, not full implementation)
+Build a functional **Generate-screen prototype** using the design tokens, shown at mobile and desktop widths in both light and dark themes. Include document upload, pasted-text input, quiz type, difficulty, question count, and optional timer. Do not implement all nine screens yet. Let the owner review the representative prototype first.
 
-Record feedback in `DESIGN_BRIEF.md` §15 and `CHANGELOG.md`.
+**Feedback requested on the prototype:**
+- Does the Generate screen match the approved minimal direction?
+- Are the design tokens usable and consistent?
+- Any WCAG contrast concerns in light or dark themes?
+- Is the mobile/desktop responsive behaviour correct?
+
+Record prototype feedback in `DESIGN_BRIEF.md` §15 and `CHANGELOG.md` before expanding the design system across the application.

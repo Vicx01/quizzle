@@ -97,6 +97,30 @@ This file is append-only in spirit: add dated entries; do not erase earlier hist
 - Owner feedback requested on colour palette, tab bar labels/order, quiz layout, theme toggle placement, and any missing screens.
 
 
+## 2026-10-22 — Phase 2 design system approved with conditions; Generate-screen prototype in progress
+
+### Owner approval (with conditions)
+- Design system APPROVED for a Generate-screen prototype only — not all nine screens.
+- Condition 1: Verify WCAG AA contrast in light and dark themes before finalising tokens.
+- Condition 2: Keep tab order Generate, History, Share, Account.
+- Condition 3: Keep one-question-at-a-time quiz navigation with Previous/Next + review step before submission.
+- Condition 4: Theme controls in Account/Settings with Light, Dark, System options.
+- Condition 5: Specifications cover quota exhaustion, generation failures, expired share links, deleted quizzes, empty states.
+
+### Design system documented in `DESIGN_BRIEF.md`
+- Design principles, anti-patterns, colour tokens (light/dark), typography (Inter + JetBrains Mono), spacing scale (4px base), layout/breakpoints (mobile/tablet/desktop), components (button/input/select/dialog/notification/progress), quiz components (question/MCQ option/theory answer/timer/results), state components (loading/error/empty), all 9 screen specs, accessibility, theme behaviour.
+
+### Current work
+- Generate-screen prototype being built with Expo + React Native Web + TypeScript.
+- Prototype scope: centered single-column layout, document upload (PDF/DOCX/TXT), pasted-text input, quiz type (MCQ/Theory/Mixed), difficulty (Easy/Medium/Hard), question count (1-50), optional timer, generate button, quota indicator.
+- Frontend-only prototype. No backend, Firebase, or AI provider functionality implemented or claimed.
+
+### Validation pending
+- WCAG AA contrast verification for light/dark tokens (owner condition 1).
+- Owner review of Generate-screen prototype before expanding design system.
+
+
+
 
 
 ### Established from the project brief

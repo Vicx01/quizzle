@@ -57,7 +57,7 @@ Evaluate in this order. All three permit free access without a credit card, but 
 
 Keep provider-specific logic replaceable behind an `AIProvider` interface so the AI provider can be swapped without rewriting the app.
 
-## 5. Architecture — PROVISIONALLY APPROVED, pending validation
+## 5. Architecture — APPROVED (provisionally, Phase 1), design system APPROVED with conditions (Phase 2)
 
 **Selected stack:**
 - Expo + React Native + React Native Web + TypeScript
@@ -68,23 +68,7 @@ Keep provider-specific logic replaceable behind an `AIProvider` interface so the
 - Firebase Hosting or Vercel for web deployment
 - EAS Build for native builds (later)
 
-**Why this stack:** Single codebase targets web and native (balanced platform priority); Firebase Auth gives Google-only sign-in on web and native; Firestore integrates with Auth security rules; server-side API layer keeps AI keys off the client; Firebase free tier covers MVP without a card.
-
-**Alternatives considered:**
-- Vite + React 19 (previous starter): web-only, no native path — rejected.
-- Next.js: web-only — rejected.
-- Flutter / Swift + Kotlin: separate codebases — rejected.
-- PostgreSQL + custom API: more infrastructure to run — rejected for MVP.
-- Supabase: viable alternative but adds another provider — noted, not selected.
-
-**Known limitations (must be validated before full commitment):**
-- Document upload/extraction (PDF, DOCX, TXT) on web and native — `expo-document-picker` works on both but returns different types (`File` on web, `uri` on native); server-side extraction recommended for consistency.
-- LaTeX rendering — KaTeX on web; `react-native-ratex` (RaTeX) on native. `react-native-ratex` requires React Native ≥ 0.84 / New Architecture — verify Expo SDK compatibility.
-- Firebase Auth Google sign-in on web and native — separate OAuth client IDs needed in Google Cloud Console.
-- Firestore offline behaviour and sharing links — test on both platforms.
-- Serverless function timeouts on long AI generations — enforce timeouts and retry/backoff.
-
-Full decision record (selected option, why, alternatives, limitations) is in `ARCHITECTURE.md`.
+**Design system:** Approved with conditions (see `DESIGN_BRIEF.md` §15). Prototype the Generate screen first; do not implement all nine screens until the owner reviews the prototype.
 
 ## 6. Security and privacy requirements
 
