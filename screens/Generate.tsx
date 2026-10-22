@@ -213,7 +213,8 @@ export const GenerateScreen = ({
         height: 40,
         borderRadius: radius.small,
         borderWidth: 1,
-        borderColor: active ? colors.accent : colors.border,
+        // Source tabs are interactive controls -> boundary needs 3:1.
+        borderColor: active ? colors.accent : colors.borderControl,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: active ? 'rgba(15, 98, 254, 0.06)' : colors.surface,
@@ -225,7 +226,8 @@ export const GenerateScreen = ({
       }),
       uploadArea: {
         borderWidth: 2,
-        borderColor: colors.border,
+        // Drop zone is an interactive control -> boundary needs 3:1.
+        borderColor: colors.borderControl,
         borderRadius: radius.small,
         backgroundColor: colors.surface,
         minHeight: 120,
@@ -282,7 +284,8 @@ export const GenerateScreen = ({
         width: 60,
         height: 44,
         borderWidth: 1,
-        borderColor: colors.border,
+        // Text input -> boundary needs 3:1.
+        borderColor: colors.borderControl,
         borderRadius: radius.small,
         paddingHorizontal: space[3],
         color: colors.textPrimary,
@@ -308,7 +311,8 @@ export const GenerateScreen = ({
         width: 70,
         height: 44,
         borderWidth: 1,
-        borderColor: colors.border,
+        // Text input -> boundary needs 3:1.
+        borderColor: colors.borderControl,
         borderRadius: radius.small,
         paddingHorizontal: space[3],
         color: colors.textPrimary,

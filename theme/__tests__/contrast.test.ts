@@ -4,32 +4,21 @@
  * Owner approval condition 1: "Keep the documented palette provisionally, but
  * verify WCAG AA contrast in light and dark themes before finalising the tokens."
  *
+ * RESOLVED 2026-10-22. The two deviations found during Phase 3 were fixed by
+ * splitting the overloaded tokens rather than by pinning the failures:
+ *
+ *   - `border`        -> split into `border` (decorative) + `borderControl`
+ *                        (control boundaries, >= 3:1).
+ *   - `textTertiary`  -> raised to >= 4.5:1 and split from `textDisabled`
+ *                        (disabled controls, exempt from 1.4.3).
+ *
  * Thresholds (WCAG 2.1):
- *  - 1.4.3  Normal text:                     >= 4.5:1
- *  - 1.4.3  Large text (>=18pt/24px bold):   >= 3:1
- *  - 1.4.11 UI components / graphics:        >= 3:1
- *  - 1.4.3  Disabled/inactive controls are EXEMPT from 1.4.3.
+ *  - 1.4.3  Normal text:                    >= 4.5:1
+ *  - 1.4.3  Large text (>=18pt/24px bold):  >= 3:1
+ *  - 1.4.11 UI components / graphics:       >= 3:1
+ *  - 1.4.3  Disabled/inactive controls are EXEMPT.
  *
- * RESULTS (measured from the actual tokens, 2026-10-22):
- *
- *   PASSING — asserted strictly below:
- *     light textPrimary/background     17.40:1
- *     light textSecondary/background    5.74:1
- *     light accent/background           5.00:1
- *     dark  textPrimary/background     19.17:1
- *     dark  textSecondary/background    7.48:1
- *     dark  accent/background           5.21:1
- *     light success/successMuted        3.12:1
- *     light danger/dangerMuted          4.41:1
- *     light warning/warningMuted        3.07:1
- *     dark  success/successMuted        4.32:1
- *     dark  danger/dangerMuted          4.29:1
- *     dark  warning/warningMuted        6.17:1
- *
- *   KNOWN DEVIATIONS — pinned (not silently fixed) in the last describe block:
- *     border on surface: light 1.18:1 / dark 1.21:1 (needs 3:1 per 1.4.11)
- *     textTertiary on background: light 2.85:1 / dark 2.45:1 (exempt if used
- *       ONLY for disabled controls; NOT exempt if used for placeholder text)
+ * Every assertion below is a real compliance requirement, not a pin.
  */
 
 import { lightColors, darkColors } from '../tokens';
@@ -74,29 +63,55 @@ const LARGE_TEXT_AND_UI = 3.0;
 
 type ColorSet = Record<string, string>;
 
-/** Text tokens that must be readable against the page background. */
-const textOnBackground = ['textPrimary', 'textSecondary'] as const;
-
 const themes: [string, ColorSet][] = [
   ['light', lightColors],
   ['dark', darkColors],
 ];
 
-describe.each(themes)('WCAG AA — %s theme (compliant pairs)', (name, c) => {
-  it.each(textOnBackground)('%s on background meets 4.5:1', token => {
+/** Text tokens required to be readable as normal-size text. */
+const readableTextTokens = ['textPrimary', 'textSecondary', 'textTertiary'] as const;
+
+describe.each(themes)('WCAG 1.4.3 — text contrast (%s)', (name, c) => {
+  it.each(readableTextTokens)('%s on background meets 4.5:1', token => {
     expect(contrastRatio(c[token], c.background)).toBeGreaterThanOrEqual(NORMAL_TEXT);
   });
 
-  it.each(textOnBackground)('%s on surface meets 4.5:1', token => {
+  it.each(readableTextTokens)('%s on surface meets 4.5:1', token => {
     expect(contrastRatio(c[token], c.surface)).toBeGreaterThanOrEqual(NORMAL_TEXT);
   });
 
-  it('accent on background meets 3:1 (large text / UI components)', () => {
+  it('textTertiary is readable on surface (placeholder text is NOT exempt)', () => {
+    // Placeholders sit on `surface`, not on `background`. A value like #767676
+    // passes against pure white (4.54:1) but FAILS against #F7F7F7 (4.24:1),
+    // so both surfaces must be checked.
+    expect(contrastRatio(c.textTertiary, c.surface)).toBeGreaterThanOrEqual(NORMAL_TEXT);
+  });
+});
+
+describe.each(themes)('WCAG 1.4.11 — non-text contrast (%s)', (name, c) => {
+  it('borderControl on surface meets 3:1 (control boundary)', () => {
+    expect(contrastRatio(c.borderControl, c.surface)).toBeGreaterThanOrEqual(LARGE_TEXT_AND_UI);
+  });
+
+  it('borderControl on background meets 3:1 (control boundary)', () => {
+    expect(contrastRatio(c.borderControl, c.background)).toBeGreaterThanOrEqual(LARGE_TEXT_AND_UI);
+  });
+
+  it('accent on background meets 3:1 (selected state, large text / UI)', () => {
     expect(contrastRatio(c.accent, c.background)).toBeGreaterThanOrEqual(LARGE_TEXT_AND_UI);
   });
 
   it('focus ring on background meets 3:1', () => {
     expect(contrastRatio(c.focus, c.background)).toBeGreaterThanOrEqual(LARGE_TEXT_AND_UI);
+  });
+
+  /**
+   * A progress bar conveys information through the fill/track boundary, so that
+   * pair is the one 1.4.11 governs. The track itself need not contrast with the
+   * page, only with the fill.
+   */
+  it('progress fill vs track meets 3:1', () => {
+    expect(contrastRatio(c.accent, c.border)).toBeGreaterThanOrEqual(LARGE_TEXT_AND_UI);
   });
 
   it('success on successMuted meets 3:1 (state chip)', () => {
@@ -112,53 +127,58 @@ describe.each(themes)('WCAG AA — %s theme (compliant pairs)', (name, c) => {
   });
 });
 
-/**
- * KNOWN DEVIATIONS — recorded, not hidden.
- *
- * These DO NOT meet the threshold. They are pinned here at their measured values
- * so (a) the suite stays green, (b) the shortfall is auditable in CI output, and
- * (c) any change to the palette immediately breaks this test and forces a review.
- *
- * Changing the approved palette requires owner approval, so these were NOT fixed
- * unilaterally.
- */
-describe('KNOWN WCAG DEVIATIONS — awaiting owner decision', () => {
+describe('Disabled controls — exempt from WCAG 1.4.3', () => {
   /**
-   * WCAG 1.4.11 Non-text Contrast: 3:1 required for visual boundaries that
-   * identify a UI component. This applies here because DESIGN_BRIEF §9.2 states
-   * input state is "communicated via border colour only" — so the border IS the
-   * only affordance identifying the input.
+   * `textDisabled` is intentionally below 4.5:1. WCAG 1.4.3 exempts inactive
+   * controls, so faded disabled labels are permitted.
    *
-   * Compliant alternatives (computed, NOT applied):
-   *   light: #8F8F8F -> 3.02:1 on surface, 3.23:1 on background
-   *   dark:  #666666 -> 3.03:1 on surface, 3.29:1 on background
+   * The important guarantee is that disabled styling is a SEPARATE token from
+   * `textTertiary`, so nothing that must be readable can silently inherit the
+   * faded value. These assertions lock that separation in.
    */
-  it('border/surface is BELOW 3:1 (light 1.18:1, dark 1.21:1) — needs owner approval to change', () => {
-    const light = contrastRatio(lightColors.border, lightColors.surface);
-    const dark = contrastRatio(darkColors.border, darkColors.surface);
-
-    expect(light).toBeCloseTo(1.18, 1);
-    expect(dark).toBeCloseTo(1.21, 1);
-    expect(light).toBeLessThan(LARGE_TEXT_AND_UI);
-    expect(dark).toBeLessThan(LARGE_TEXT_AND_UI);
+  it('textDisabled is a distinct token from textTertiary', () => {
+    expect(lightColors.textDisabled).not.toBe(lightColors.textTertiary);
+    expect(darkColors.textDisabled).not.toBe(darkColors.textTertiary);
   });
 
-  /**
-   * WCAG 1.4.3 exempts *disabled* controls, and textTertiary is documented as
-   * "Disabled, muted text" — so its use for disabled labels/controls is fine.
-   *
-   * CAVEAT: DESIGN_BRIEF §9.2 assigns textTertiary to input *placeholder* text.
-   * Placeholder text is NOT exempt, so if placeholders must be readable this
-   * token needs to reach 4.5:1 (a mid-grey such as #767676 gives 4.54:1 on white).
-   */
-  it('textTertiary/background is BELOW 4.5:1 (light 2.85:1, dark 2.45:1) — exempt only for disabled controls', () => {
-    const light = contrastRatio(lightColors.textTertiary, lightColors.background);
-    const dark = contrastRatio(darkColors.textTertiary, darkColors.background);
+  it('textTertiary (readable) has higher contrast than textDisabled (exempt)', () => {
+    for (const c of [lightColors, darkColors]) {
+      expect(contrastRatio(c.textTertiary, c.background)).toBeGreaterThan(
+        contrastRatio(c.textDisabled, c.background)
+      );
+    }
+  });
 
-    expect(light).toBeCloseTo(2.85, 1);
-    expect(dark).toBeCloseTo(2.45, 1);
-    expect(light).toBeLessThan(NORMAL_TEXT);
-    expect(dark).toBeLessThan(NORMAL_TEXT);
+  it('textDisabled is visibly faded rather than fully contrast-free', () => {
+    // Guard against accidentally setting the disabled colour equal to the
+    // background, which would make disabled labels disappear entirely.
+    for (const c of [lightColors, darkColors]) {
+      expect(contrastRatio(c.textDisabled, c.background)).toBeGreaterThan(1.5);
+    }
+  });
+});
+
+describe('Decorative border — deliberately subtle, documented', () => {
+  /**
+   * `border` is for dividers, card outlines and progress tracks only. It is
+   * intentionally below 3:1, which is permitted because those boundaries are not
+   * required to identify a control (WCAG 1.4.11).
+   *
+   * This test documents that decision and will fail if `border` is ever made
+   * compliant by accident — at which point it should be merged with
+   * `borderControl` and this test removed.
+   */
+  it('border is documented as decorative and NOT used to identify controls', () => {
+    expect(contrastRatio(lightColors.border, lightColors.surface)).toBeLessThan(LARGE_TEXT_AND_UI);
+    expect(contrastRatio(darkColors.border, darkColors.surface)).toBeLessThan(LARGE_TEXT_AND_UI);
+  });
+
+  it('borderControl is strictly more visible than the decorative border', () => {
+    for (const c of [lightColors, darkColors]) {
+      expect(contrastRatio(c.borderControl, c.surface)).toBeGreaterThan(
+        contrastRatio(c.border, c.surface)
+      );
+    }
   });
 });
 
@@ -170,21 +190,26 @@ describe('WCAG AA contrast — full report', () => {
           ['textPrimary/background', c.textPrimary, c.background],
           ['textSecondary/background', c.textSecondary, c.background],
           ['textTertiary/background', c.textTertiary, c.background],
+          ['textTertiary/surface', c.textTertiary, c.surface],
+          ['textDisabled/background (exempt)', c.textDisabled, c.background],
+          ['borderControl/surface', c.borderControl, c.surface],
+          ['borderControl/background', c.borderControl, c.background],
+          ['border/surface (decorative)', c.border, c.surface],
           ['accent/background', c.accent, c.background],
-          ['border/surface', c.border, c.surface],
+          ['accent/border (progress)', c.accent, c.border],
           ['success/successMuted', c.success, c.successMuted],
           ['danger/dangerMuted', c.danger, c.dangerMuted],
           ['warning/warningMuted', c.warning, c.warningMuted],
         ] as const
       ).map(
         ([pair, fg, bg]) =>
-          `    ${name.padEnd(5)} ${pair.padEnd(26)} ${contrastRatio(fg, bg).toFixed(2)}:1`
+          `    ${name.padEnd(5)} ${pair.padEnd(30)} ${contrastRatio(fg, bg).toFixed(2)}:1`
       )
     );
 
     // eslint-disable-next-line no-console
     console.log(`\n  WCAG contrast report:\n${lines.join('\n')}\n`);
 
-    expect(lines).toHaveLength(16);
+    expect(lines).toHaveLength(26);
   });
 });

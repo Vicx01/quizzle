@@ -1,8 +1,8 @@
 # Quizzle — Next Steps
 
-**Current phase:** Phase 3 — application foundation (COMPLETE, verified)
+**Current phase:** Phase 3 — application foundation (COMPLETE, accessibility fixes applied)
 
-**Status:** Foundation built and all checks green. Two WCAG contrast deviations found and recorded, awaiting owner decision. Firebase/AI/backend deliberately NOT implemented.
+**Status:** Foundation built and all checks green. **WCAG AA contrast (owner condition 1) is RESOLVED** — both deviations fixed by splitting the overloaded tokens. Firebase/AI/backend deliberately NOT implemented.
 
 **Last updated:** 2026-10-22
 
@@ -38,13 +38,13 @@ Design system defined in `DESIGN_BRIEF.md` and approved with conditions. Generat
 
 ### Verified by running
 
-| Check      | Command                       | Result                |
-| ---------- | ----------------------------- | --------------------- |
-| Typecheck  | `npx tsc --noEmit`            | 0 errors              |
-| Lint       | `npx eslint . --ext .ts,.tsx` | 0 errors, 8 warnings  |
-| Format     | `npx prettier --check .`      | clean                 |
-| Tests      | `npx jest`                    | 74 passed / 9 suites  |
-| Web bundle | `npx expo start --web`        | 271 modules, HTTP 200 |
+| Check      | Command                       | Result                   |
+| ---------- | ----------------------------- | ------------------------ |
+| Typecheck  | `npx tsc --noEmit`            | 0 errors                 |
+| Lint       | `npx eslint . --ext .ts,.tsx` | 0 errors, 8 warnings     |
+| Format     | `npx prettier --check .`      | clean                    |
+| Tests      | `npx jest`                    | **89 passed** / 9 suites |
+| Web bundle | `npx expo start --web`        | 266 modules, HTTP 200    |
 
 ### Bugs fixed during this phase
 
@@ -53,6 +53,19 @@ Design system defined in `DESIGN_BRIEF.md` and approved with conditions. Generat
 3. Replaced web-only **`localStorage` with AsyncStorage** (would have crashed on native).
 4. Fixed **`Toggle` ignoring its `style` prop**.
 5. Removed dead code (`DialogWithTheme`, `SignInScreenWithTheme`, unused imports).
+6. **WCAG AA contrast resolved** (see decision 1 above) — including the invisible
+   toggle track and the placeholder-colour error.
+
+### Still not verified (unchanged)
+
+- **Visual rendering** — no browser in this sandbox; the bundle compiles but
+  appearance is unconfirmed. **This is the main remaining gap.**
+- **Native iOS/Android** — never built or run. No native support is claimed.
+- **Firebase Auth / Firestore** — not configured; no live sign-in test.
+- **AI provider access** — no keys, no live calls.
+
+**Do not begin AI-provider integration** until accessibility and visual review
+are complete.
 
 ### Failed approaches — do not retry
 
@@ -67,31 +80,41 @@ Design system defined in `DESIGN_BRIEF.md` and approved with conditions. Generat
 
 ## Decisions needed from the owner (blocking)
 
-### 1. WCAG AA contrast — 2 deviations (approval condition 1)
+### 1. WCAG AA contrast — RESOLVED (2026-10-22)
 
-Full measurements are in `CHANGELOG.md` and `theme/__tests__/contrast.test.ts`.
+Both deviations were fixed by splitting the overloaded tokens rather than by
+pinning the failures. Details and the full measurement table are in
+`DESIGN_BRIEF.md` §16.
 
-**a) `border` token fails WCAG 1.4.11** (light 1.18:1, dark 1.21:1; needs 3:1).
-Applies because DESIGN_BRIEF §9.2 says input state is "communicated via border colour only".
-Options:
+- **Control borders:** `border` split into `border` (decorative, stays subtle) and
+  `borderControl` (`#8F8F8F` light / `#666666` dark, >= 3:1). Applied to inputs,
+  secondary buttons, segmented options, source tabs, upload drop zone, and the
+  toggle track.
+- **Muted text:** `textTertiary` raised to `#707070` / `#8A8A8A` (>= 4.5:1) and
+  split from the new `textDisabled` (`#999999` / `#525252`), which covers
+  disabled controls and is exempt from WCAG 1.4.3.
 
-- Keep `#E5E5E5` / `#2A2A2A` (current, non-compliant, preserves the airy look)
-- Change to `#8F8F8F` / `#666666` (compliant, visibly heavier borders)
+Two related bugs were fixed at the same time:
 
-**b) `textTertiary` fails 4.5:1** (light 2.85:1, dark 2.45:1).
-Exempt **only** for disabled controls. DESIGN_BRIEF §9.2 also uses it for **placeholder** text, which is not exempt.
-Options:
+- The **toggle track** was invisible when off (1.18:1). It now uses
+  `borderControl` (3.02:1).
+- Placeholder contrast was recomputed against the **input surface**, not the page
+  background — `#767676` passes on white (4.54:1) but fails on `#F7F7F7` (4.24:1),
+  so `#707070` was chosen instead.
 
-- Restrict `textTertiary` to disabled controls only, and give placeholders a compliant colour
-- Raise `textTertiary` to ~`#767676`
+All 36 contrast assertions now pass as real requirements, not pins.
 
 ### 2. Firebase project
 
 No Firebase project exists, so Google sign-in is unverified. Provide a project + the `EXPO_PUBLIC_FIREBASE_*` values to verify sign-in on web.
 
-### 3. Navigation: keep custom shell or migrate to Expo Router?
+### ~~3. Navigation: keep custom shell or migrate to Expo Router?~~ — SETTLED
 
-`expo-router` is installed and registered in `app.json`, but the app currently uses a custom tab shell. Migrating is a separate change and should be approved before being undertaken.
+**Decision: keep the existing custom tab shell.** The `expo-router` plugin
+registration was removed from `app.json` (it was dead config for routing that is
+not in use, and the source of an `ajv` dependency conflict). The `expo-router`
+package remains installed but intentionally unused; do not migrate without a
+concrete requirement.
 
 ---
 
@@ -106,20 +129,37 @@ No Firebase project exists, so Google sign-in is unverified. Provide a project +
 
 ## Phase 4 acceptance criteria (next phase)
 
-**Depends on the owner decisions above.**
+**Scope note:** AI-provider integration is **deferred by owner instruction** until
+accessibility and visual review are complete. Phase 4 is therefore split: 4A
+(accessibility + visual sign-off) must finish before 4B (backend/AI) starts.
 
-1. Owner decision recorded on the two WCAG contrast deviations; tokens updated accordingly.
-2. Firebase project created; `EXPO_PUBLIC_FIREBASE_*` configured.
-3. Google sign-in **verified working on web** (popup + redirect).
-4. Firestore created with security rules deployed (ownership enforced server-side).
-5. Server-side API layer scaffolded with the replaceable `AIProvider` interface (ARCHITECTURE.md §3.6).
-6. **AI provider free-tier verified with a live account** before any provider-specific code — order: GroqCloud → NVIDIA NIM → Mistral. No paid usage without explicit approval.
-7. `expo-document-picker` integrated to replace the web-only `<input type="file">` in `Generate.tsx`.
-8. Backend quota endpoint wired to the `quota` prop so the indicator shows real data.
-9. PDF/DOCX/TXT extraction validated server-side; scanned-PDF detection confirmed.
-10. LaTeX rendering validated (KaTeX web; native renderer evaluated).
-11. CI (GitHub Actions) running lint + typecheck + tests on push.
-12. Native build attempted (EAS), with results recorded honestly — including failures.
+### 4A — Accessibility and visual review (do this first)
+
+1. Owner reviews the live preview in **both themes at mobile and desktop widths**
+   and confirms the new control borders (`#8F8F8F` / `#666666`) look right — they
+   are noticeably heavier than the previous `#E5E5E5` / `#2A2A2A`.
+2. Owner confirms the **toggle is now visible when off** and that the mid-grey
+   track reads correctly as a disabled state.
+3. Owner confirms the raised `textTertiary` (`#707070` / `#8A8A8A`) still reads as
+   clearly _muted_ relative to `textSecondary` — in light mode the two are now
+   closer than before (4.95:1 vs 5.74:1), which is unavoidable if placeholders must
+   meet 4.5:1.
+4. Keyboard/focus-visible pass over every interactive control.
+5. Screen-reader labels verified on the sign-in and generate screens.
+
+### 4B — Backend and AI (only after 4A is signed off)
+
+6. Firebase project created; `EXPO_PUBLIC_FIREBASE_*` configured.
+7. Google sign-in **verified working on web** (popup + redirect).
+8. Firestore created with security rules deployed (ownership enforced server-side).
+9. Server-side API layer scaffolded with the replaceable `AIProvider` interface (ARCHITECTURE.md §3.6).
+10. **AI provider free-tier verified with a live account** before any provider-specific code — order: GroqCloud → NVIDIA NIM → Mistral. No paid usage without explicit approval.
+11. `expo-document-picker` integrated to replace the web-only `<input type="file">` in `Generate.tsx`.
+12. Backend quota endpoint wired to the `quota` prop so the indicator shows real data.
+13. PDF/DOCX/TXT extraction validated server-side; scanned-PDF detection confirmed.
+14. LaTeX rendering validated (KaTeX web; native renderer evaluated).
+15. CI (GitHub Actions) running lint + typecheck + tests on push.
+16. Native build attempted (EAS), with results recorded honestly — including failures.
 
 ---
 

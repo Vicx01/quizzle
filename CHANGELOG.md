@@ -324,3 +324,96 @@ Both deviations are pinned by tests at their current measured values, so the sui
 - Generate still shows an `Alert` explaining that backend generation is not implemented. This is intentional and honest — it is not a dead button.
 - `screens/SignIn.tsx` "Privacy policy" and "Terms of service" are plain `<Text>`, not links, because no such documents exist yet. Making them look like links would be a decorative control implying nonexistent functionality.
 - History / Share / Account tabs render an explicit "not implemented yet" placeholder rather than fake content.
+
+---
+
+## 2026-10-22 — Phase 3 follow-up: WCAG AA contrast resolved
+
+Both deviations recorded in the Phase 3 entry are now **fixed**, not pinned.
+
+### Approach
+
+The root cause was that two tokens were each serving two different requirements,
+so neither could satisfy WCAG without breaking the other. Each was **split**:
+
+| Before         | After                                                          | Why                                                                                                                          |
+| -------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `border`       | `border` (decorative) + `borderControl` (control boundaries)   | WCAG 1.4.11 requires 3:1 only for boundaries _necessary to identify a component_; dividers and card outlines do not qualify. |
+| `textTertiary` | `textTertiary` (readable) + `textDisabled` (disabled controls) | WCAG 1.4.3 exempts _disabled_ controls but not placeholder text.                                                             |
+
+### Token changes
+
+| Token                                     | Light                 | Dark                  |
+| ----------------------------------------- | --------------------- | --------------------- |
+| `borderControl` (new)                     | `#8F8F8F`             | `#666666`             |
+| `textTertiary` (changed)                  | `#999999` → `#707070` | `#525252` → `#8A8A8A` |
+| `textDisabled` (new)                      | `#999999`             | `#525252`             |
+| `border` (unchanged, now decorative only) | `#E5E5E5`             | `#2A2A2A`             |
+
+### Components updated to use `borderControl`
+
+- `components/Input.tsx` — input boundary
+- `components/Button.tsx` — secondary button border
+- `components/SegmentedControl.tsx` — unselected option border
+- `components/Toggle.tsx` — track off-state
+- `screens/Generate.tsx` — inactive source tabs, upload drop zone, question-count input, timer input
+
+`components/Button.tsx` disabled text now uses `textDisabled` instead of `textTertiary`.
+
+### Two additional bugs found and fixed
+
+1. **The toggle track was effectively invisible when off.** It used `border`,
+   giving 1.18:1 (light) / 1.21:1 (dark) against the surface — the control could
+   not be seen at all. Now uses `borderControl` (3.02:1 / 3.03:1).
+2. **Placeholder contrast was being measured against the wrong surface.** The
+   common suggestion `#767676` reaches 4.54:1 on pure white but only **4.24:1** on
+   the input fill `#F7F7F7`, so it would have failed. `textTertiary` was chosen
+   against `surface` (the harder case): `#707070` gives 4.62:1 on surface and
+   4.95:1 on background.
+
+### Measurement notes
+
+- Progress bars are assessed **fill-vs-track** (3.97:1 light / 3.90:1 dark), since
+  that boundary carries the information. Track-vs-page is not the applicable test.
+- Decorative `border` remains intentionally below 3:1; a test asserts this so the
+  decorative/control distinction cannot silently collapse.
+- A test asserts `textDisabled` stays a separate, lower-contrast token so faded
+  disabled styling can never leak into content that must be readable.
+
+### Files changed
+
+- `theme/tokens.ts` — tokens split/raised, with a doc comment explaining the rules
+- `theme/__tests__/contrast.test.ts` — rewritten; 36 assertions, all real
+  compliance requirements, zero pins. Report now prints all measured pairs.
+- `components/Input.tsx`, `Button.tsx`, `SegmentedControl.tsx`, `Toggle.tsx`
+- `screens/Generate.tsx`
+- `DESIGN_BRIEF.md` — §5 colour tables, §9.2 input spec, §16 rewritten as RESOLVED
+- `app.json` — removed the `expo-router` plugin (see below)
+- `NEXT_STEPS.md`, `PROJECT_CONTEXT.md`, `CHANGELOG.md`
+
+### Navigation decision
+
+**Kept the existing custom tab shell.** The `expo-router` plugin registration was
+removed from `app.json` — it was dead config for file-based routing the app does
+not use, and it caused the `ajv` dependency conflict noted in the Phase 3 entry.
+The `expo-router` package stays installed but is intentionally unused. No
+migration without a concrete requirement.
+
+### Checks
+
+| Check                         | Result                               |
+| ----------------------------- | ------------------------------------ |
+| `npx tsc --noEmit`            | 0 errors                             |
+| `npx eslint . --ext .ts,.tsx` | 0 errors, 8 warnings                 |
+| `npx prettier --check .`      | clean                                |
+| `npx jest`                    | **89 passed** (up from 74), 9 suites |
+| `npx expo start --web`        | bundles, 266 modules, HTTP 200       |
+
+### Still outstanding
+
+- **Visual review is the main remaining gap** — no browser in this sandbox, so the
+  appearance of the new border colours (particularly the darker `#8F8F8F` control
+  borders and the visible toggle track) is **unconfirmed**. The owner should review
+  the live preview in both themes.
+- AI-provider integration is explicitly deferred until accessibility and visual
+  review are complete.

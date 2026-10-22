@@ -50,7 +50,9 @@ export const Toggle = ({ label, value, onValueChange, style }: ToggleProps) => {
         width: 44,
         height: 24,
         borderRadius: 12,
-        backgroundColor: value ? colors.accent : colors.border,
+        // Track must be discernible against the surface or the control is
+        // invisible when off (was 1.18:1). borderControl gives 3.02:1.
+        backgroundColor: value ? colors.accent : colors.borderControl,
       } as ViewStyle,
       thumb: {
         width: 20,

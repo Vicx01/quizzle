@@ -60,14 +60,17 @@ export const Button = ({
 
   if (disabled) {
     variantStyles = [{ backgroundColor: colors.accentMuted }, { borderColor: colors.border }];
-    textColor = colors.textTertiary;
+    // Disabled controls are exempt from WCAG 1.4.3, so this uses the
+    // dedicated faded token rather than the readable textTertiary.
+    textColor = colors.textDisabled;
   } else if (variant === 'primary') {
     variantStyles = [{ backgroundColor: colors.accent }];
     textColor = '#FFFFFF';
   } else if (variant === 'secondary') {
     variantStyles = [
       { backgroundColor: 'transparent' },
-      { borderWidth: 1, borderColor: colors.border },
+      // Secondary button border identifies the control -> needs 3:1.
+      { borderWidth: 1, borderColor: colors.borderControl },
     ];
     textColor = colors.textPrimary;
   } else if (variant === 'danger') {

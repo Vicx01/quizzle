@@ -66,45 +66,49 @@ Colours are defined as semantic CSS custom properties. Light and dark themes swa
 
 ### Light theme
 
-| Token                    | Role                                  | Hex       |
-| ------------------------ | ------------------------------------- | --------- |
-| `--color-background`     | Page background                       | `#FFFFFF` |
-| `--color-surface`        | Elevated surfaces (inputs, modals)    | `#F7F7F7` |
-| `--color-border`         | Subtle dividers, input borders        | `#E5E5E5` |
-| `--color-text-primary`   | Body text, headings                   | `#1A1A1A` |
-| `--color-text-secondary` | Secondary text, captions, helper text | `#666666` |
-| `--color-text-tertiary`  | Disabled, muted text                  | `#999999` |
-| `--color-accent`         | Primary actions, links                | `#0F62FE` |
-| `--color-accent-hover`   | Pressed / hover state                 | `#0D55E8` |
-| `--color-accent-muted`   | Disabled primary action               | `#C7C7C7` |
-| `--color-success`        | Correct answers, success states       | `#16A34A` |
-| `--color-success-muted`  | Correct answer background (light)     | `#ECFDF3` |
-| `--color-danger`         | Incorrect answers, errors             | `#DC2626` |
-| `--color-danger-muted`   | Incorrect answer background (light)   | `#FEF2F2` |
-| `--color-warning`        | Quota, warnings                       | `#D97706` |
-| `--color-warning-muted`  | Warning background (light)            | `#FFFBEB` |
-| `--color-focus`          | Keyboard focus ring                   | `#0F62FE` |
+| Token                    | Role                                                                                                     | Hex       |
+| ------------------------ | -------------------------------------------------------------------------------------------------------- | --------- |
+| `--color-background`     | Page background                                                                                          | `#FFFFFF` |
+| `--color-surface`        | Elevated surfaces (inputs, modals)                                                                       | `#F7F7F7` |
+| `--color-border`         | Decorative dividers, card outlines, progress tracks. **Not** for control boundaries.                     | `#E5E5E5` |
+| `--color-border-control` | Boundaries that identify a control (inputs, secondary buttons, segmented options, toggle tracks). >= 3:1 | `#8F8F8F` |
+| `--color-text-primary`   | Body text, headings                                                                                      | `#1A1A1A` |
+| `--color-text-secondary` | Secondary text, captions, helper text                                                                    | `#666666` |
+| `--color-text-tertiary`  | Readable muted text: placeholders, captions. >= 4.5:1                                                    | `#707070` |
+| `--color-text-disabled`  | Disabled-control labels only. Exempt from WCAG 1.4.3                                                     | `#999999` |
+| `--color-accent`         | Primary actions, links                                                                                   | `#0F62FE` |
+| `--color-accent-hover`   | Pressed / hover state                                                                                    | `#0D55E8` |
+| `--color-accent-muted`   | Disabled primary action                                                                                  | `#C7C7C7` |
+| `--color-success`        | Correct answers, success states                                                                          | `#16A34A` |
+| `--color-success-muted`  | Correct answer background (light)                                                                        | `#ECFDF3` |
+| `--color-danger`         | Incorrect answers, errors                                                                                | `#DC2626` |
+| `--color-danger-muted`   | Incorrect answer background (light)                                                                      | `#FEF2F2` |
+| `--color-warning`        | Quota, warnings                                                                                          | `#D97706` |
+| `--color-warning-muted`  | Warning background (light)                                                                               | `#FFFBEB` |
+| `--color-focus`          | Keyboard focus ring                                                                                      | `#0F62FE` |
 
 ### Dark theme
 
-| Token                    | Role                               | Hex       |
-| ------------------------ | ---------------------------------- | --------- |
-| `--color-background`     | Page background                    | `#0F0F0F` |
-| `--color-surface`        | Elevated surfaces                  | `#1A1A1A` |
-| `--color-border`         | Subtle dividers, input borders     | `#2A2A2A` |
-| `--color-text-primary`   | Body text, headings                | `#FFFFFF` |
-| `--color-text-secondary` | Secondary text, captions           | `#A1A1AA` |
-| `--color-text-tertiary`  | Disabled, muted text               | `#525252` |
-| `--color-accent`         | Primary actions, links             | `#3B82F6` |
-| `--color-accent-hover`   | Pressed / hover state              | `#2563EB` |
-| `--color-accent-muted`   | Disabled primary action            | `#4B4B4B` |
-| `--color-success`        | Correct answers                    | `#22C55E` |
-| `--color-success-muted`  | Correct answer background (dark)   | `#064E2B` |
-| `--color-danger`         | Incorrect answers, errors          | `#EF4444` |
-| `--color-danger-muted`   | Incorrect answer background (dark) | `#450A0A` |
-| `--color-warning`        | Quota, warnings                    | `#F59E0B` |
-| `--color-warning-muted`  | Warning background (dark)          | `#452A03` |
-| `--color-focus`          | Keyboard focus ring                | `#3B82F6` |
+| Token                    | Role                                                                                                     | Hex       |
+| ------------------------ | -------------------------------------------------------------------------------------------------------- | --------- |
+| `--color-background`     | Page background                                                                                          | `#0F0F0F` |
+| `--color-surface`        | Elevated surfaces                                                                                        | `#1A1A1A` |
+| `--color-border`         | Decorative dividers, card outlines, progress tracks. **Not** for control boundaries.                     | `#2A2A2A` |
+| `--color-border-control` | Boundaries that identify a control (inputs, secondary buttons, segmented options, toggle tracks). >= 3:1 | `#666666` |
+| `--color-text-primary`   | Body text, headings                                                                                      | `#FFFFFF` |
+| `--color-text-secondary` | Secondary text, captions                                                                                 | `#A1A1AA` |
+| `--color-text-tertiary`  | Readable muted text: placeholders, captions. >= 4.5:1                                                    | `#8A8A8A` |
+| `--color-text-disabled`  | Disabled-control labels only. Exempt from WCAG 1.4.3                                                     | `#525252` |
+| `--color-accent`         | Primary actions, links                                                                                   | `#3B82F6` |
+| `--color-accent-hover`   | Pressed / hover state                                                                                    | `#2563EB` |
+| `--color-accent-muted`   | Disabled primary action                                                                                  | `#4B4B4B` |
+| `--color-success`        | Correct answers                                                                                          | `#22C55E` |
+| `--color-success-muted`  | Correct answer background (dark)                                                                         | `#064E2B` |
+| `--color-danger`         | Incorrect answers, errors                                                                                | `#EF4444` |
+| `--color-danger-muted`   | Incorrect answer background (dark)                                                                       | `#450A0A` |
+| `--color-warning`        | Quota, warnings                                                                                          | `#F59E0B` |
+| `--color-warning-muted`  | Warning background (dark)                                                                                | `#452A03` |
+| `--color-focus`          | Keyboard focus ring                                                                                      | `#3B82F6` |
 
 ### Semantic colour usage
 
@@ -198,21 +202,27 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 
 ### 9.2 Input
 
-| Part           | Token                   | Value                              |
-| -------------- | ----------------------- | ---------------------------------- |
-| Background     | `--color-surface`       | Light: `#F7F7F7` / Dark: `#1A1A1A` |
-| Border         | `--color-border`        | 1 px solid                         |
-| Border (focus) | `--color-focus`         | 2 px solid                         |
-| Text           | `--color-text-primary`  |                                    |
-| Placeholder    | `--color-text-tertiary` |                                    |
-| Height         | —                       | 44 px                              |
-| Padding        | `--space-3` horizontal  | 12 px                              |
-| Border radius  | —                       | 6 px                               |
+| Part           | Token                    | Value                                 |
+| -------------- | ------------------------ | ------------------------------------- |
+| Background     | `--color-surface`        | Light: `#F7F7F7` / Dark: `#1A1A1A`    |
+| Border         | `--color-border-control` | 1 px solid (control boundary, >= 3:1) |
+| Border (focus) | `--color-focus`          | 2 px solid                            |
+| Text           | `--color-text-primary`   |                                       |
+| Placeholder    | `--color-text-tertiary`  | >= 4.5:1 against `--color-surface`    |
+| Height         | —                        | 44 px                                 |
+| Padding        | `--space-3` horizontal   | 12 px                                 |
+| Border radius  | —                        | 6 px                                  |
 
 - Text input, textarea, and select share the same height and border style.
 - Error state: border `--color-danger`, helper text `--color-danger`.
 - Label above input, font weight 500, size 14 px.
 - No inner box-shadow; state communicated via border colour only.
+- **Border uses `--color-border-control`, not `--color-border`.** Because state is
+  communicated via border colour alone, the border is the only affordance
+  identifying the field, so it must meet WCAG 1.4.11 (3:1).
+- **Disabled inputs** use `--color-text-disabled` for their label and value text,
+  which is exempt from WCAG 1.4.3. Their border may also drop to
+  `--color-border`.
 
 ### 9.3 Select / Menu
 
@@ -578,53 +588,66 @@ Record prototype feedback in `DESIGN_BRIEF.md` §15 and `CHANGELOG.md` before ex
 
 ## 16. WCAG AA contrast verification (condition 1)
 
-Measured programmatically from the implemented tokens on 2026-10-22 by
-`theme/__tests__/contrast.test.ts`. Ratios are WCAG 2.1 relative-luminance based.
+**Status: RESOLVED (2026-10-22).** All token pairs now meet WCAG AA.
+Measured programmatically from the implemented tokens by
+`theme/__tests__/contrast.test.ts`. The test suite asserts compliance and fails
+on regression — the deviations are no longer pinned.
 
-Thresholds: normal text 4.5:1 (1.4.3); large text and UI components 3:1 (1.4.11);
-disabled/inactive controls are exempt from 1.4.3.
+### How the two deviations were resolved
 
-| Token pair                        | Light      | Dark       | Required  | Result                 |
-| --------------------------------- | ---------- | ---------- | --------- | ---------------------- |
-| `textPrimary` / `background`      | 17.40:1    | 19.17:1    | 4.5:1     | PASS                   |
-| `textSecondary` / `background`    | 5.74:1     | 7.48:1     | 4.5:1     | PASS                   |
-| `textSecondary` / `surface`       | pass       | pass       | 4.5:1     | PASS                   |
-| `accent` / `background`           | 5.00:1     | 5.21:1     | 3:1       | PASS                   |
-| `focus` / `background`            | pass       | pass       | 3:1       | PASS                   |
-| `success` / `successMuted`        | 3.12:1     | 4.32:1     | 3:1       | PASS                   |
-| `danger` / `dangerMuted`          | 4.41:1     | 4.29:1     | 3:1       | PASS                   |
-| `warning` / `warningMuted`        | 3.07:1     | 6.17:1     | 3:1       | PASS                   |
-| **`border` / `surface`**          | **1.18:1** | **1.21:1** | **3:1**   | **FAIL**               |
-| **`textTertiary` / `background`** | **2.85:1** | **2.45:1** | **4.5:1** | **FAIL (conditional)** |
+**A — Control borders.** WCAG 1.4.11 requires 3:1 only for boundaries that are
+_necessary to identify a UI component_. The single `border` token was being used
+for both decorative dividers and control boundaries, so it could not satisfy one
+requirement without wrecking the other. It was **split in two**:
 
-### Deviation A — `border` (both themes)
+| Token           | Purpose                                             | Light     | Dark      |
+| --------------- | --------------------------------------------------- | --------- | --------- |
+| `border`        | Decorative dividers, card outlines, progress tracks | `#E5E5E5` | `#2A2A2A` |
+| `borderControl` | Boundaries identifying a control                    | `#8F8F8F` | `#666666` |
 
-WCAG 1.4.11 requires 3:1 for visual boundaries that identify a UI component.
-This applies here because §9.2 specifies that input state is "communicated via
-border colour only" — the border is the sole affordance identifying the field.
+`borderControl` applied to: text inputs, secondary buttons, segmented-control
+options, inactive source tabs, the upload drop zone, and the toggle track.
 
-Options (computed; **not applied** — requires owner approval):
+**B — Muted text.** WCAG 1.4.3 exempts _disabled_ controls but **not**
+placeholder text. One token was serving both. It was **split in two**:
 
-| Option     | Light     | Dark      | Ratio         | Trade-off                              |
-| ---------- | --------- | --------- | ------------- | -------------------------------------- |
-| Keep as-is | `#E5E5E5` | `#2A2A2A` | 1.18 / 1.21:1 | Preserves the airy look; non-compliant |
-| Change     | `#8F8F8F` | `#666666` | 3.02 / 3.03:1 | Compliant; visibly heavier borders     |
+| Token          | Purpose                                      | Light     | Dark      |
+| -------------- | -------------------------------------------- | --------- | --------- |
+| `textTertiary` | Readable muted text (placeholders, captions) | `#707070` | `#8A8A8A` |
+| `textDisabled` | Disabled-control labels only (exempt)        | `#999999` | `#525252` |
 
-### Deviation B — `textTertiary` (both themes)
+### Measured results (all PASS)
 
-Exempt from 1.4.3 **only** when used for disabled/inactive controls, which is how
-§5 documents it ("Disabled, muted text"). However §9.2 also assigns this token to
-input **placeholder** text, which is **not** exempt.
+| Token pair                                   | Light      | Dark       | Required     |
+| -------------------------------------------- | ---------- | ---------- | ------------ |
+| `textPrimary` / `background`                 | 17.40:1    | 19.17:1    | 4.5:1        |
+| `textSecondary` / `background`               | 5.74:1     | 7.48:1     | 4.5:1        |
+| `textSecondary` / `surface`                  | pass       | pass       | 4.5:1        |
+| **`textTertiary` / `background`**            | **4.95:1** | **5.55:1** | 4.5:1        |
+| **`textTertiary` / `surface`**               | **4.62:1** | **5.04:1** | 4.5:1        |
+| **`borderControl` / `surface`**              | **3.02:1** | **3.03:1** | 3:1          |
+| **`borderControl` / `background`**           | **3.23:1** | **3.34:1** | 3:1          |
+| `accent` / `background`                      | 5.00:1     | 5.21:1     | 3:1          |
+| `focus` / `background`                       | pass       | pass       | 3:1          |
+| `accent` / `border` (progress fill vs track) | 3.97:1     | 3.90:1     | 3:1          |
+| `success` / `successMuted`                   | 3.12:1     | 4.32:1     | 3:1          |
+| `danger` / `dangerMuted`                     | 4.41:1     | 4.29:1     | 3:1          |
+| `warning` / `warningMuted`                   | 3.07:1     | 6.17:1     | 3:1          |
+| `textDisabled` / `background`                | 2.85:1     | 2.45:1     | _exempt_     |
+| `border` / `surface`                         | 1.18:1     | 1.21:1     | _decorative_ |
 
-Options:
+### Notes on method
 
-- Restrict `textTertiary` to disabled controls only and give placeholder text a
-  compliant colour (e.g. `#767676` → 4.54:1 on white); **or**
-- Raise `textTertiary` itself to a compliant mid-grey.
-
-### Current handling
-
-Both deviations are **pinned by tests** at their measured values: the suite stays
-green and auditable, the shortfall is visible in CI output, and any palette change
-immediately fails the test and forces a review. The approved palette was **not**
-changed unilaterally.
+- **Placeholder text was checked against `surface`, not `background`.** Placeholders
+  render on the input fill (`#F7F7F7` / `#1A1A1A`), which is the harder case. The
+  commonly suggested `#767676` reaches 4.54:1 on pure white but only **4.24:1** on
+  the input surface, so it was rejected.
+- **Progress bars are measured fill-vs-track**, not track-vs-page: the information
+  ("how full") is carried by that boundary, which passes at 3.9–4.0:1.
+- **The toggle track was a latent bug, not just a token issue.** Its off-state used
+  `border`, making the control 1.18:1 against the surface — effectively invisible.
+  It now uses `borderControl` (3.02:1), so the toggle is discernible when off.
+- **Decorative borders remain intentionally subtle.** A test asserts `border` stays
+  below 3:1 so the decorative/control distinction cannot silently collapse.
+- **Disabled styling is asserted to stay separate** from readable muted text, so no
+  future change can leak the faded value into content that must be readable.

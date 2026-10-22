@@ -54,7 +54,8 @@ export const SegmentedControl = ({
           justifyContent: 'center',
           alignItems: 'center',
           borderWidth: 1,
-          borderColor: selected ? colors.accent : colors.border,
+          // Option boundary identifies the selectable control -> needs 3:1.
+          borderColor: selected ? colors.accent : colors.borderControl,
           backgroundColor: selected ? 'rgba(15, 98, 254, 0.06)' : colors.surface,
         }) as ViewStyle,
       optionText: (selected: boolean) =>

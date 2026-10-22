@@ -65,7 +65,8 @@ export const Input = ({
       input: {
         height: multiline ? undefined : 44,
         borderWidth: 1,
-        borderColor: error ? colors.danger : colors.border,
+        // Input boundary identifies the control -> needs 3:1 (WCAG 1.4.11).
+        borderColor: error ? colors.danger : colors.borderControl,
         borderRadius: radius.small,
         paddingHorizontal: space[3],
         paddingVertical: multiline ? space[3] : undefined,

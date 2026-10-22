@@ -53,14 +53,42 @@ export const radius = {
   large: 12,
 } as const;
 
+/**
+ * Theme colours.
+ *
+ * Two distinct border tokens, because WCAG 1.4.11 applies only to boundaries
+ * that are *necessary to identify a UI component* — not to decorative dividers:
+ *
+ *  - `border`        Decorative separators (dividers, card outlines, progress
+ *                    tracks). Kept deliberately subtle. NOT required to hit 3:1.
+ *  - `borderControl` Boundaries that identify an interactive control (text
+ *                    inputs, secondary buttons, segmented options, toggle
+ *                    tracks). Required to hit >= 3:1 against every surface it
+ *                    is drawn on.
+ *
+ * Two distinct muted-text tokens, because WCAG 1.4.3 exempts *disabled*
+ * controls but NOT placeholder text:
+ *
+ *  - `textTertiary`  Readable muted text (placeholders, captions). >= 4.5:1.
+ *  - `textDisabled`  Disabled-control labels only. Exempt from 1.4.3; kept
+ *                    visually faded by design.
+ *
+ * All values are asserted by theme/__tests__/contrast.test.ts.
+ */
+
 // Light theme colors
 export const lightColors = {
   background: '#FFFFFF',
   surface: '#F7F7F7',
   border: '#E5E5E5',
+  // 3.02:1 on surface, 3.23:1 on background
+  borderControl: '#8F8F8F',
   textPrimary: '#1A1A1A',
   textSecondary: '#666666',
-  textTertiary: '#999999',
+  // 4.62:1 on surface, 4.95:1 on background
+  textTertiary: '#707070',
+  // Disabled controls only — exempt from WCAG 1.4.3
+  textDisabled: '#999999',
   accent: '#0F62FE',
   accentHover: '#0D55E8',
   accentMuted: '#C7C7C7',
@@ -82,9 +110,14 @@ export const darkColors = {
   background: '#0F0F0F',
   surface: '#1A1A1A',
   border: '#2A2A2A',
+  // 3.03:1 on surface, 3.34:1 on background
+  borderControl: '#666666',
   textPrimary: '#FFFFFF',
   textSecondary: '#A1A1AA',
-  textTertiary: '#525252',
+  // 5.04:1 on surface, 5.55:1 on background
+  textTertiary: '#8A8A8A',
+  // Disabled controls only — exempt from WCAG 1.4.3
+  textDisabled: '#525252',
   accent: '#3B82F6',
   accentHover: '#2563EB',
   accentMuted: '#4B4B4B',

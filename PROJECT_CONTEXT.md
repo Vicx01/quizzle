@@ -1,6 +1,6 @@
 # Quizzle — Project Context
 
-**Status:** Phase 3 — application foundation complete and verified. Architecture implemented for the frontend; backend/AI not implemented.  
+**Status:** Phase 3 — application foundation complete and verified, WCAG AA contrast resolved. Architecture implemented for the frontend; backend/AI not implemented. Awaiting accessibility/visual review before AI-provider integration.  
 **Last updated:** 2026-10-22  
 **Branch:** `arena/9131a5e6-quizzle`
 
@@ -128,10 +128,19 @@ Do not finalise the design system or build all screens until the owner approves 
 **Deliberately NOT implemented:** Firestore, server-side API layer, AI provider
 integration, and live Google sign-in. No backend functionality is claimed.
 
-**Owner condition 1 (WCAG AA contrast) has been verified** — two deviations found
-in the approved palette (`border` and `textTertiary`). They are documented in
-`DESIGN_BRIEF.md` §16 and `CHANGELOG.md`, pinned by tests, and **await an owner
-decision**. The approved palette was not changed unilaterally.
+**Owner condition 1 (WCAG AA contrast) has been verified and RESOLVED.** Two
+deviations were found in the approved palette and fixed by splitting the
+overloaded tokens:
+
+- `border` → `border` (decorative) + `borderControl` (`#8F8F8F` light /
+  `#666666` dark) for boundaries that identify a control, >= 3:1.
+- `textTertiary` → raised to `#707070` / `#8A8A8A` (>= 4.5:1) and split from the
+  new `textDisabled` (`#999999` / `#525252`) for disabled controls, which are
+  exempt from WCAG 1.4.3.
+
+Full measurement tables are in `DESIGN_BRIEF.md` §16. All 36 contrast assertions
+in `theme/__tests__/contrast.test.ts` now pass as real requirements — the
+deviations are not pinned.
 
 **Not verified:** visual rendering (no browser in the sandbox), native iOS/Android
 (no build or run), Firebase Auth (no project configured), AI provider access
@@ -141,9 +150,10 @@ See `NEXT_STEPS.md` for the Phase 4 acceptance criteria and the blocking decisio
 
 ## 11. Key open decisions
 
-- **WCAG AA contrast deviations** — decision needed on the `border` and `textTertiary` tokens (see DESIGN_BRIEF.md §16). Blocking token finalisation.
+- ~~**WCAG AA contrast deviations**~~ — RESOLVED (2026-10-22); see DESIGN_BRIEF.md §16.
+- **Visual review of the new border colours** — the darker control borders (`#8F8F8F` / `#666666`) and the now-visible toggle track have not been seen in a browser. Owner review in both themes is the main remaining gap.
 - **Firebase project** — needed before Google sign-in can be verified.
-- **Navigation** — keep the custom tab shell or migrate to Expo Router (installed but unused).
+- **Navigation** — the custom tab shell is kept. `expo-router` stays installed but unused; do not migrate without a concrete requirement.
 - Final owner approval of `ARCHITECTURE.md` (stack, data model, security, provider order, deployment).
 - AI provider selection after live free-tier verification (NVIDIA NIM / GroqCloud / Mistral).
 - File size, text length, generation frequency, and storage quotas (not yet finalised).
