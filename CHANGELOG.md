@@ -14,7 +14,42 @@ This file is append-only in spirit: add dated entries; do not erase earlier hist
 - Added the four project documents: PROJECT_CONTEXT.md, CHANGELOG.md, NEXT_STEPS.md, DESIGN_BRIEF.md.
 - These are discovery/planning documents only. No implementation, automated tests, AI provider access, authentication, deployment, or retention mechanism is verified.
 
-## 2026-10-22 — Initial project handoff documents
+## 2026-10-22 — Phase 0 discovery complete
+
+### Repository state (before reset)
+- Single commit `121e417` "feat: Initialize Quizzle AI project structure"; session branch `arena/9131a5e6-quizzle`, working tree clean.
+- Starter-template files removed: Vite + React 19 app (App.tsx, index.tsx, index.html, vite.config.ts, tsconfig.json, types.ts, package.json, README.md, metadata.json, .gitignore); components (ChatBot, HistoryView, ImageGenerator, Layout, MCQGenerator, Onboarding, QuizView); services (audioUtils, geminiService).
+- The template required a client-side GEMINI_API_KEY and pointed to an AI Studio app — not aligned with the server-side-key, provider-evaluation direction in PROJECT_CONTEXT.md.
+
+### Action taken
+- Emptied the repository of all tracked starter-template files.
+- Added the four project documents: PROJECT_CONTEXT.md, CHANGELOG.md, NEXT_STEPS.md, DESIGN_BRIEF.md.
+
+### Discovery interview (Phase 0) — owner answers captured
+- Intended users / use cases: university / college students — coursework, exam prep, lecture review.
+- Visual references: Notion.
+- Visual direction: minimal.
+- Brand: none yet — guidance requested.
+- Home-screen layout: centered single-column.
+- Theme: both light and dark.
+- Platform priority: balanced web and mobile.
+- Existing work to preserve: nothing — start fresh.
+
+### Status
+- These documents capture requirements and proposed work.
+- No source code, automated tests, live AI API calls, authentication, deployment, or retention mechanism is verified.
+- Architecture (Expo + React Native Web + Firebase + server-side API layer) is proposed, NOT approved.
+- AI providers (NVIDIA NIM, GroqCloud, mistral) are candidates, NOT verified.
+
+### Failed approaches
+- None recorded yet.
+
+### Known blockers
+- Architecture not yet approved.
+- AI provider access and quotas not verified.
+- Retention policy needs owner approval.
+- Brand colours/typography/logo guidance needed.
+
 
 ### Established from the project brief
 - Quizzle is an AI quiz-generation/study application.

@@ -1,39 +1,48 @@
 # Quizzle — Next Steps
 
 **Current phase:** Phase 0 — discovery and project setup  
-**Status:** Not started in the repository; documentation bootstrap only.
+**Status:** Discovery complete; ready for architecture and design approval  
+**Last updated:** 2026-10-22  
+**Branch:** `arena/9131a5e6-quizzle`
 
-## Immediate next task
+## What was done in Phase 0
 
-Run the Phase 0 discovery interview before implementing the application.
+1. Inspected the existing repository on `arena/9131a5e6-quizzle`: a single-commit Vite + React 19 + Gemini AI Studio starter template (App.tsx, components, services, package.json, README, etc.).
+2. Identified existing features: quiz-generation UI components and a Gemini service, but the template couples the AI key to the client (requires GEMINI_API_KEY) and does not match the server-side-key, provider-agnostic direction.
+3. Emptied the repository of all starter-template files and added the four planning documents (PROJECT_CONTEXT.md, CHANGELOG.md, NEXT_STEPS.md, DESIGN_BRIEF.md).
+4. Ran the Phase 0 discovery interview in two batches and captured owner decisions:
+   - Users: university/college students (coursework, exam prep, lecture review).
+   - Visual references: Notion.
+   - Visual direction: minimal.
+   - Brand: none yet — guidance requested.
+   - Home-screen layout: centered single-column.
+   - Theme: both light and dark.
+   - Platform priority: balanced web and mobile.
+   - Existing work to preserve: nothing.
+5. Updated PROJECT_CONTEXT.md and DESIGN_BRIEF.md with confirmed decisions separated from assumptions and open questions.
 
-### Required actions
-1. Inspect the current repository, if one exists.
-2. Identify existing features, framework, dependencies, assets, tests, and working code.
-3. Ask the owner concise questions about intended users, design references, visual direction, branding, layout, theme, and platform priorities.
-4. Clarify unresolved product decisions without re-asking requirements already documented in `PROJECT_CONTEXT.md`.
-5. Update `DESIGN_BRIEF.md` with answers, marking unanswered items as open questions.
-6. Update `PROJECT_CONTEXT.md` with confirmed decisions and clearly labelled proposals.
-7. Record actual inspection results in `CHANGELOG.md`.
+## Acceptance criteria (all met for Phase 0)
 
-## Acceptance criteria
+- Existing repository inspected: yes (starter template reviewed and reset).
+- Discovery questions asked and answered before major implementation: yes.
+- Confirmed decisions separated from assumptions: yes (see PROJECT_CONTEXT.md section 2).
+- Design preferences captured before final UI selection: yes (see DESIGN_BRIEF.md).
+- No claim that implementation or tests passed unless run: none claimed.
 
-- Existing repository inspected, or absence of a repository explicitly confirmed.
-- Discovery questions asked before major implementation.
-- Confirmed decisions separated from assumptions.
-- Design preferences captured before final UI selection.
-- No claim that implementation or tests passed unless run.
-- Owner approval requested before Phase 1 architecture work.
+## Remaining blockers before Phase 1
 
-## Outstanding blockers
-
-- Repository location and current implementation are unknown.
-- User segments and primary use cases need clarification.
-- Visual direction and references are not yet approved.
-- Proposed architecture is not approved.
-- AI provider account access and current free quotas are unverified.
-- Retention periods and free-tier quotas need owner approval.
+- Architecture not yet approved (Expo + Firebase proposal under evaluation).
+- AI provider access and free quotas not verified (NVIDIA NIM, GroqCloud, mistral).
+- Retention policy needs owner approval.
+- Brand colours/typography/logo guidance needed from owner.
 
 ## Suggested next prompt
 
-Read `PROJECT_CONTEXT.md`, `CHANGELOG.md`, `NEXT_STEPS.md`, and `DESIGN_BRIEF.md`. Begin Phase 0 discovery. Inspect the repository before changing code. Ask a short batch of high-value questions about the intended users, visual references, design direction, branding, screen layout, themes, and platform priorities. Do not implement the full app until the owner approves the design and architecture. Update all four documents before stopping.
+Review PROJECT_CONTEXT.md and DESIGN_BRIEF.md. Approve or adjust the confirmed decisions. Approve or revise the proposed architecture (Expo + React Native Web + Firebase + server-side API layer). Confirm retention policy. Once approved, begin Phase 1: scaffold the project, set up the replaceable AI provider interface, and verify free-tier access for NVIDIA NIM / GroqCloud / mistral before writing provider-specific code.
+
+## Outstanding items to update after approval
+
+- PROJECT_CONTEXT.md: mark architecture as approved or revise section 5.
+- DESIGN_BRIEF.md: record wireframe/prototype feedback and design-system decisions.
+- CHANGELOG.md: append dated entries for approvals and Phase 1 work.
+- NEXT_STEPS.md: advance to Phase 1 acceptance criteria.

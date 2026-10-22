@@ -1,13 +1,30 @@
 # Quizzle — Project Context
 
-**Status:** Planning / discovery. No implementation work is verified by this document.
-**Last updated:** 2026-10-22
+**Status:** Phase 0 discovery complete. No implementation work is verified.  
+**Last updated:** 2026-10-22  
+**Branch:** `arena/9131a5e6-quizzle`
 
 ## 1. Product overview
 
 Quizzle is an AI-powered study application that turns learning material into quizzes. The initial target is a web application, with a maintainable path to iOS and Android.
 
-## 2. Established product requirements
+## 2. Confirmed product decisions (from Phase 0 discovery)
+
+These were answered by the owner and are treated as confirmed, not assumed:
+
+| Decision | Confirmed value |
+|---|---|
+| Intended users | University / college students |
+| Main study use cases | Coursework, exam prep, lecture review |
+| Visual references | Notion |
+| Visual direction | Minimal |
+| Home-screen layout | Centered single-column focused on quiz generation |
+| Theme | Both light and dark (user-toggleable) |
+| Platform priority | Balanced — web and mobile equally |
+| Existing Quizzle assets to preserve | None — start completely fresh |
+| Brand colours / typography / logo | None yet — guidance needed |
+
+## 3. Established product requirements (unchanged)
 
 - Google-only sign-in.
 - Home screen focused on quiz generation.
@@ -28,28 +45,37 @@ Quizzle is an AI-powered study application that turns learning material into qui
 
 Question quality, answer correctness, and source coverage take priority over generating the maximum number of questions.
 
-## 3. AI provider candidates
+## 4. AI provider candidates (UNVERIFIED)
 
 Evaluate in this order, without assuming current access or limits:
+
 1. NVIDIA NIM.
 2. GroqCloud.
-3. OpenRouter as an optional fallback.
+3. mistral as an optional fallback.
 
-Verify account requirements, whether payment-card verification is required, available models, current free quotas, context/output limits, structured-output support, privacy terms, and availability in the owner's region. Do not silently switch to a paid provider or paid usage.
+Verify account requirements, whether payment-card verification is required, available models, current free quotas, context/output limits, structured-output support, privacy terms, and availability in the owner's region. Do not silently switch to a paid provider or paid usage. Never enable paid usage without explicit owner approval.
 
-## 4. Proposed architecture — NOT YET APPROVED
+Keep provider-specific logic replaceable behind an interface so the AI provider can be swapped without rewriting the app.
+
+## 5. Proposed architecture — NOT YET APPROVED
 
 Evaluate rather than blindly adopt:
+
 - Expo + React Native + React Native Web + TypeScript.
-- Expo Router.
+- Expo Router for navigation.
 - Firebase Authentication with Google sign-in.
 - Firestore for quiz definitions, attempts, ownership, sharing, and metadata.
 - A server-side API layer for AI calls and privileged operations.
 - Web deployment on an appropriate hosting provider, with a path to native builds.
 
-Check compatibility for document upload/extraction, PDF handling, mathematical notation, navigation, and native platforms before committing.
+The owner's "balanced" platform priority (web and mobile equally) is compatible with Expo + React Native Web, but the following must still be checked before committing:
+- Document upload/extraction (PDF, DOCX, TXT) on web and native.
+- LaTeX/mathematical notation rendering compatibility.
+- Firebase Auth Google sign-in on web and native.
+- Firestore offline behaviour and sharing links.
+- Server-side API layer hosting and deployment target.
 
-## 5. Security and privacy requirements
+## 6. Security and privacy requirements
 
 - Keep AI provider keys server-side; never bundle them into client code.
 - Enforce authentication, ownership, quotas, and permissions server-side.
@@ -61,29 +87,22 @@ Check compatibility for document upload/extraction, PDF handling, mathematical n
 - Implement actual deletion and expiry mechanisms; do not merely hide expired records.
 - Do not log sensitive source content unnecessarily.
 
-## 6. Proposed retention defaults — NEED OWNER APPROVAL
+## 7. Proposed retention defaults — NEED OWNER APPROVAL
 
 - Uploaded source material: temporary processing; discard after generation by default.
 - Saved quiz history: 30 days.
 - Share links: 30 days, revocable earlier.
 - Inactive-user cleanup: consider deletion after 90 days of inactivity, subject to owner approval and applicable requirements.
 
-These are proposals, not implemented policies. Clarify what happens to attempts and shares when a quiz or account is deleted.
+Clarify what happens to attempts and shares when a quiz or account is deleted.
 
-## 7. Design approach
+## 8. Design approach
 
-Do not generate a generic AI-looking interface by default. Interview the owner about:
-- Intended users and use cases.
-- Visual references and products they like.
-- Visual direction, typography, colours, branding, and existing assets.
-- Home-screen layout and quiz-taking experience.
-- Light/dark mode.
-- Desktop/mobile priorities.
-- Navigation and accessibility.
+Do not generate a generic AI-looking interface by default. Confirmed direction: minimal, Notion-referencing, centered single-column home screen, both light and dark themes, balanced web/mobile.
 
-Do not finalise the design system or build all screens until the owner approves the design direction. See `DESIGN_BRIEF.md`.
+Do not finalise the design system or build all screens until the owner approves the design direction and architecture. See `DESIGN_BRIEF.md`.
 
-## 8. Engineering principles
+## 9. Engineering principles
 
 - Implement in small, reviewable phases.
 - Inspect the existing repository before replacing files or scaffolding.
@@ -92,18 +111,16 @@ Do not finalise the design system or build all screens until the owner approves 
 - Record actual commands and outcomes.
 - Keep documentation updated so another model can continue without the original conversation.
 
-## 9. Current state
+## 10. Current state
 
-Discovery and planning only. The repository has not been inspected in this handoff, and no implementation, test, provider access, or deployment is verified.
+Repository inspected and reset on `arena/9131a5e6-quizzle`. Starter-template Vite/React/Gemini app removed. Four planning documents present. Phase 0 discovery complete.
 
-## 10. Key open decisions
+## 11. Key open decisions
 
-- User segments and primary study use cases.
-- Visual direction and design references.
-- Whether an existing codebase is available and what should be reused.
-- Final architecture and hosting choice.
-- AI provider and verified free access.
+- Final architecture and hosting choice (Expo + Firebase proposal not yet approved).
+- AI provider and verified free access (NIM / GroqCloud / mistral not yet verified).
 - File size, text length, generation frequency, and storage quotas.
-- Final retention policy.
+- Final retention policy (owner approval needed).
 - Theory-question grading approach.
 - Whether OCR for scanned PDFs is in scope.
+- Brand colours, typography, and logo (guidance requested by owner).
