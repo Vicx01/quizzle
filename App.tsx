@@ -14,8 +14,15 @@ import { StatusBar, StyleSheet, Text, View } from 'react-native';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { GenerateScreen } from './screens/Generate';
 import { SignInScreen } from './screens/SignIn';
-import { onAuthStateChanged, signInWithGoogle } from './services/auth';
-import { isAuthConfigured } from './services/auth';
+import {
+  onAuthStateChanged,
+  signInWithGoogle,
+  isAuthConfigured,
+  consumeRedirectResult,
+  describeAuthError,
+  isCancellation,
+} from './services/auth';
+import { getFirebaseConfigStatus, type ConfigStatus } from './services/firebase';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { space, fontSize } from './theme/tokens';
 
@@ -46,11 +53,21 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>('generate');
   const { isConnected } = useNetworkStatus();
 
+  // Read once: env vars are inlined at build time, so this cannot change at
+  // runtime, but recomputing keeps the value stable across re-renders.
+  const [configStatus] = useState<ConfigStatus>(() => getFirebaseConfigStatus());
+
   useEffect(() => {
     if (!isAuthConfigured()) {
       setAuthState('signed-out');
       return;
     }
+
+    // Pick up the result of a redirect sign-in from a previous page load.
+    // This runs once on startup; see consumeRedirectResult() for why it cannot
+    // be awaited inside the sign-in handler.
+    void consumeRedirectResult();
+
     const unsubscribe = onAuthStateChanged(user => {
       setAuthState(user ? 'signed-in' : 'signed-out');
       setAuthError(null);
@@ -60,18 +77,26 @@ export default function App() {
 
   const handleSignIn = useCallback(async () => {
     if (!isAuthConfigured()) {
-      setAuthError(
-        'Sign-in is not configured. Set the EXPO_PUBLIC_FIREBASE_* environment variables to enable Google sign-in.'
-      );
+      // Should not be reachable: the sign-in button is replaced by the setup
+      // checklist when configuration is incomplete.
+      setAuthError('Firebase is not configured. See the setup checklist above.');
       return;
     }
     setSigningIn(true);
     setAuthError(null);
     try {
-      await signInWithGoogle();
-      // onAuthStateChanged flips authState to 'signed-in'.
+      const user = await signInWithGoogle();
+      if (user) {
+        // onAuthStateChanged will also flip this; setting it here avoids a
+        // flash of the sign-in screen.
+        setAuthState('signed-in');
+      }
+      // If null, a redirect was started and the page will reload.
     } catch (error: unknown) {
-      setAuthError(error instanceof Error ? error.message : 'Sign-in failed. Please try again.');
+      // A user-initiated cancel is not an error worth showing.
+      if (!isCancellation(error)) {
+        setAuthError(describeAuthError(error));
+      }
     } finally {
       setSigningIn(false);
     }
@@ -87,7 +112,12 @@ export default function App() {
             <Text style={styles.loadingText}>Loading…</Text>
           </View>
         ) : authState === 'signed-out' ? (
-          <SignInScreen onSignIn={handleSignIn} error={authError} loading={signingIn} />
+          <SignInScreen
+            onSignIn={handleSignIn}
+            error={authError}
+            loading={signingIn}
+            configStatus={configStatus}
+          />
         ) : activeTab === 'generate' ? (
           <GenerateScreen
             onTabChange={key => setActiveTab(key as TabKey)}

@@ -11,7 +11,9 @@
  * Behaviour:
  * - Single Google-only sign-in. No email/password, no social alternatives.
  * - On success the auth state listener in the app shell redirects to Generate.
- * - Error: inline message below button, supplied by `error` prop.
+ * - Error: inline message below the button, mapped to an actionable cause.
+ * - If Firebase is not configured, the sign-in button is REPLACED by an explicit
+ *   setup checklist. We never render a button that cannot work.
  *
  * Responsive: Full-width card on mobile; centered max-width 400 px on desktop.
  * Accessibility: Button has an accessibility label; focus visible; Enter/Space activates.
@@ -19,6 +21,7 @@
 
 import React from 'react';
 import {
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -29,6 +32,7 @@ import {
 import { useColors } from '../theme/ThemeContext';
 import { space, fontSize, fontWeight, radius, isDesktopWidth } from '../theme/tokens';
 import { Button } from '../components/Button';
+import type { ConfigProblem, ConfigStatus } from '../services/firebase';
 
 interface SignInScreenProps {
   onSignIn: () => void;
@@ -36,38 +40,51 @@ interface SignInScreenProps {
   error?: string | null;
   /** True while the sign-in request is in flight. */
   loading?: boolean;
+  /** When present and not `ok`, a setup checklist replaces the sign-in button. */
+  configStatus?: ConfigStatus | null;
   style?: StyleProp<ViewStyle>;
 }
 
-export function SignInScreen({ onSignIn, error, loading, style }: SignInScreenProps) {
+export function SignInScreen({ onSignIn, error, loading, configStatus, style }: SignInScreenProps) {
   const colors = useColors();
   const { width } = useWindowDimensions();
   const isDesktop = isDesktopWidth(width);
-
   const styles = getStyles(colors, isDesktop);
 
+  const misconfigured = Boolean(configStatus && !configStatus.ok);
+
   return (
-    <View style={[styles.container, style]}>
+    <ScrollView
+      style={[styles.scroll, style]}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.card}>
         <Text style={styles.wordmark}>quizzle</Text>
         <Text style={styles.heading}>Sign in to Quizzle</Text>
         <Text style={styles.subtitle}>Continue with your Google account.</Text>
 
-        {/* Single Google-only action. No email/password alternative by design. */}
-        <Button
-          variant="primary"
-          label="Sign in with Google"
-          fullWidth
-          onPress={onSignIn}
-          loading={loading}
-          accessibilityLabel="Sign in with Google"
-        />
+        {misconfigured ? (
+          <SetupChecklist problems={configStatus!.errors} />
+        ) : (
+          <>
+            {/* Single Google-only action. No email/password alternative by design. */}
+            <Button
+              variant="primary"
+              label="Sign in with Google"
+              fullWidth
+              onPress={onSignIn}
+              loading={loading}
+              accessibilityLabel="Sign in with Google"
+            />
 
-        {error ? (
-          <Text style={styles.error} accessibilityRole="alert">
-            {error}
-          </Text>
-        ) : null}
+            {error ? (
+              <Text style={styles.error} accessibilityRole="alert">
+                {error}
+              </Text>
+            ) : null}
+          </>
+        )}
 
         <View style={styles.links}>
           <Text style={styles.linkText}>Privacy policy</Text>
@@ -75,11 +92,48 @@ export function SignInScreen({ onSignIn, error, loading, style }: SignInScreenPr
           <Text style={styles.linkText}>Terms of service</Text>
         </View>
       </View>
+    </ScrollView>
+  );
+}
+
+/**
+ * Shown when Firebase is not configured. Lists exactly which variables are
+ * missing and what to do, so nobody is left at a sign-in button that silently
+ * fails.
+ */
+function SetupChecklist({ problems }: { problems: ConfigProblem[] }) {
+  const colors = useColors();
+  const styles = getStyles(colors, false);
+
+  return (
+    <View style={styles.setupPanel} accessibilityRole="alert" testID="firebase-setup-panel">
+      <Text style={styles.setupTitle}>Finish Firebase setup</Text>
+      <Text style={styles.setupBody}>
+        Google sign-in needs Firebase credentials. These are missing or still placeholders:
+      </Text>
+
+      {problems.map(p => (
+        <Text key={p.key} style={styles.setupItem}>
+          • <Text style={styles.setupCode}>{p.key}</Text>
+          {' — '}
+          {p.message}
+        </Text>
+      ))}
+
+      <Text style={styles.setupBody}>
+        Copy <Text style={styles.setupCode}>.env.example</Text> to{' '}
+        <Text style={styles.setupCode}>.env</Text>, fill in the values from Firebase Console →
+        Project settings → Your apps → SDK setup and configuration, then{' '}
+        <Text style={styles.setupBold}>restart the dev server</Text>.
+      </Text>
+
+      <Text style={styles.setupHint}>Setup steps: docs/FIREBASE_SETUP.md</Text>
     </View>
   );
 }
 
 function getStyles(colors: ReturnType<typeof useColors>, isDesktop: boolean) {
+  // Keys are kept in alphabetical order to satisfy `react-native/sort-styles`.
   return StyleSheet.create({
     card: {
       alignItems: 'center',
@@ -93,10 +147,10 @@ function getStyles(colors: ReturnType<typeof useColors>, isDesktop: boolean) {
     },
     container: {
       alignItems: 'center',
-      backgroundColor: colors.background,
-      flex: 1,
+      flexGrow: 1,
       justifyContent: 'center',
       paddingHorizontal: space[4],
+      paddingVertical: space[8],
     },
     error: {
       color: colors.danger,
@@ -116,9 +170,51 @@ function getStyles(colors: ReturnType<typeof useColors>, isDesktop: boolean) {
       fontSize: fontSize.xs,
     },
     links: {
+      alignItems: 'center',
       flexDirection: 'row',
       gap: space[2],
       marginTop: space[6],
+    },
+    scroll: {
+      backgroundColor: colors.background,
+      flex: 1,
+    },
+    setupBody: {
+      color: colors.textPrimary,
+      fontSize: fontSize.sm,
+    },
+    setupBold: {
+      color: colors.textPrimary,
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.semibold,
+    },
+    setupCode: {
+      color: colors.textPrimary,
+      fontFamily: 'JetBrains Mono',
+      fontSize: fontSize.sm,
+    },
+    setupHint: {
+      color: colors.textTertiary,
+      fontSize: fontSize.xs,
+      marginTop: space[2],
+    },
+    setupItem: {
+      color: colors.textPrimary,
+      fontSize: fontSize.sm,
+    },
+    setupPanel: {
+      backgroundColor: colors.warningMuted,
+      borderColor: colors.warning,
+      borderRadius: radius.small,
+      borderWidth: 1,
+      gap: space[2],
+      padding: space[4],
+      width: '100%',
+    },
+    setupTitle: {
+      color: colors.warning,
+      fontSize: fontSize.base,
+      fontWeight: fontWeight.semibold,
     },
     subtitle: {
       color: colors.textSecondary,

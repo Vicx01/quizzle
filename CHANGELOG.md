@@ -417,3 +417,128 @@ migration without a concrete requirement.
   the live preview in both themes.
 - AI-provider integration is explicitly deferred until accessibility and visual
   review are complete.
+
+---
+
+## 2026-10-22 — Firebase Auth: integration prepared (NOT verified)
+
+**Google sign-in is implemented but has never run against a real Firebase
+project. It must not be described as working.** The blocker is missing
+credentials, which only the owner can supply.
+
+### 1. Existing implementation identified
+
+- `services/firebase.ts` — lazy `initializeApp` / `getAuth` / `getFirestore`,
+  config read from `EXPO_PUBLIC_FIREBASE_*` env vars.
+- `services/auth.ts` — Google sign-in (popup + redirect fallback),
+  `onAuthStateChanged`, `signOut`, `getCurrentUser`.
+- `screens/SignIn.tsx` — Google-only sign-in screen.
+- `App.tsx` — auth state gate in the app shell.
+
+Required env vars: `EXPO_PUBLIC_FIREBASE_API_KEY`,
+`EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`, `EXPO_PUBLIC_FIREBASE_PROJECT_ID`,
+`EXPO_PUBLIC_FIREBASE_APP_ID`.
+Recommended: `..._STORAGE_BUCKET`, `..._MESSAGING_SENDER_ID`.
+
+### 2. Security fix — `.env` was NOT gitignored
+
+`.gitignore` contained `.env*.local`, which only matches files **ending** in
+`.local`. Plain `.env` and `.env.production` were **not** ignored and would have
+been committed with real credentials.
+
+Replaced with:
+
+```
+.env
+.env.*
+!.env.example
+```
+
+Verified: `.env`, `.env.local`, `.env.production` all ignored; `.env.example`
+still tracked; no `.env` files tracked; no credential-shaped strings
+(`AIza…`) in any tracked file.
+
+### 3. Added `.env.example`
+
+Placeholders only, with a header explaining that Firebase web config is public
+by design and that access is enforced by Firestore rules + Authorized Domains.
+Explicitly warns never to put AI provider or service-account keys there.
+
+### 4. Actionable configuration check
+
+`services/firebase.ts` now exposes `getFirebaseConfigStatus()` returning
+structured problems classified as `missing` / `placeholder` / `invalid` /
+`recommended-missing`. It detects:
+
+- unset variables,
+- values still copied from `.env.example` (`your-…`, all-zero IDs),
+- malformed project IDs and auth domains.
+
+`screens/SignIn.tsx` renders a **"Finish Firebase setup"** checklist naming each
+offending variable. When misconfigured the sign-in button is **removed entirely**
+rather than left as a control that cannot work.
+
+`services/auth.ts` adds `describeAuthError()` mapping Firebase codes to
+actionable messages, notably `auth/unauthorized-domain` (the most likely failure
+on a preview host) and `auth/operation-not-allowed`.
+
+### 5. Two auth bugs fixed
+
+1. **Broken redirect flow.** `getRedirectResult()` was called immediately after
+   `signInWithRedirect()`, but the page has already navigated away, so it always
+   returned null. Redirect results are now consumed once on startup via
+   `consumeRedirectResult()`.
+2. **Redirect hijacked the page on user cancel.** The fallback triggered on
+   `auth/popup-closed-by-user`, navigating away when the user simply closed the
+   popup. It now only falls back on `auth/popup-blocked` (and the genuinely
+   unsupported-environment codes). Cancellation is reported as "Sign-in was
+   cancelled", not an error.
+
+### 6. Documentation
+
+`docs/FIREBASE_SETUP.md` — full Console walkthrough: project creation, web app
+registration, enabling the Google provider, **Authorized Domains** (including the
+Arena preview host), OAuth consent screen, native requirements (bundle ID,
+SHA-1/256, `initializeAuth` + RN persistence — NOT implemented), a verification
+checklist, and a troubleshooting table.
+
+### 7. Files changed
+
+- `.gitignore` — env-file fix (security)
+- `.env.example` — new, placeholders only
+- `services/firebase.ts` — structured config diagnostics
+- `services/auth.ts` — redirect fix, cancel handling, `describeAuthError`
+- `screens/SignIn.tsx` — setup checklist replaces dead button
+- `App.tsx` — consumes redirect result, surfaces config status
+- `jest.config.js` — transform `.mjs`; add firebase/@firebase to
+  `transformIgnorePatterns` (the SDK ships ESM and broke Jest)
+- `services/__tests__/firebase.test.ts`, `services/__tests__/auth.test.ts`,
+  `screens/__tests__/SignIn.test.tsx` — new
+- `docs/FIREBASE_SETUP.md` — new
+- `NEXT_STEPS.md`, `CHANGELOG.md`
+
+### 8. Checks
+
+| Check                         | Result                             |
+| ----------------------------- | ---------------------------------- |
+| `npx tsc --noEmit`            | 0 errors                           |
+| `npx eslint . --ext .ts,.tsx` | 0 errors, 7 warnings               |
+| `npx prettier --check .`      | clean                              |
+| `npx jest`                    | **118 passed** (was 89), 12 suites |
+| `npx expo start --web`        | bundles, 271 modules, HTTP 200     |
+
+New tests cover the config validator (missing / placeholder / malformed /
+trimming), the error mapper, and both sign-in states. None contact Firebase.
+
+### 9. Operational note
+
+`node_modules` does not persist between sessions in this environment and had to
+be reinstalled (`npm install --legacy-peer-deps`). `npx tsc` will try to fetch an
+unrelated `tsc` package from npm if dependencies are missing — reinstall rather
+than running it.
+
+### 10. Deferred
+
+AI-provider integration remains deferred per owner instruction, until
+authentication works and the remaining backend prerequisites are addressed.
+Firestore and the server-side API layer are still not implemented.

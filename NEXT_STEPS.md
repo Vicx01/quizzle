@@ -2,11 +2,66 @@
 
 **Current phase:** Phase 3 — application foundation (COMPLETE, accessibility fixes applied)
 
-**Status:** Foundation built and all checks green. **WCAG AA contrast (owner condition 1) is RESOLVED** — both deviations fixed by splitting the overloaded tokens. Firebase/AI/backend deliberately NOT implemented.
+**Status:** Foundation built and all checks green. **WCAG AA contrast RESOLVED.** **Firebase integration is prepared but UNVERIFIED — the current blocker is missing credentials.** Google sign-in has never been executed against a real Firebase project. AI/backend deliberately NOT implemented.
 
 **Last updated:** 2026-10-22
 
 **Branch:** `arena/9131a5e6-quizzle`
+
+---
+
+## Current blocker — Firebase credentials (ACTION REQUIRED)
+
+The app cannot get past the sign-in screen because Firebase is not configured.
+Everything needed is in place **except the four values below**.
+
+### Supply these in `.env`
+
+```
+cp .env.example .env
+```
+
+| Variable                           | Source                                                                                  |
+| ---------------------------------- | --------------------------------------------------------------------------------------- |
+| `EXPO_PUBLIC_FIREBASE_API_KEY`     | Firebase Console → Project settings → General → Your apps → SDK setup and configuration |
+| `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN` | same block (`<project-id>.firebaseapp.com`)                                             |
+| `EXPO_PUBLIC_FIREBASE_PROJECT_ID`  | same block                                                                              |
+| `EXPO_PUBLIC_FIREBASE_APP_ID`      | same block                                                                              |
+
+Then **restart the dev server** — `EXPO_PUBLIC_*` is inlined at build time.
+
+### Also required in the Firebase Console
+
+1. **Authentication → Sign-in method → Google → Enable.**
+2. **Authentication → Settings → Authorized domains** — add the origin you are
+   browsing from. The Arena preview host (e.g. `8080-<sandbox-id>.e2b.app`)
+   **must** be added or sign-in fails with `auth/unauthorized-domain`.
+3. **OAuth consent screen** (Google Cloud) — if External/Testing, add test users.
+
+Full walkthrough: `docs/FIREBASE_SETUP.md`.
+
+### What the app does now when config is missing
+
+Instead of a sign-in button that silently fails, it shows **"Finish Firebase
+setup"** listing exactly which variables are missing or still placeholders, and
+what to do. Verified by tests (`screens/__tests__/SignIn.test.tsx`).
+
+### Security
+
+- The four values are Firebase _web_ config — public by design, not secrets.
+  Access is enforced by Firestore security rules (not yet written) and the
+  Authorized Domains allowlist.
+- `.env` and all `.env.*` variants are gitignored; only `.env.example` is
+  tracked. **The previous `.env*.local` pattern did not ignore plain `.env` —
+  this was fixed.**
+- Verified: no credential-shaped strings in tracked files; no `.env` tracked.
+
+### Sign-in is NOT verified
+
+Do not describe authentication as working. It has never run against a real
+project. Verification steps are in `docs/FIREBASE_SETUP.md` §5.
+
+---
 
 ---
 
@@ -104,9 +159,11 @@ Two related bugs were fixed at the same time:
 
 All 36 contrast assertions now pass as real requirements, not pins.
 
-### 2. Firebase project
+### 2. Firebase credentials — BLOCKING
 
-No Firebase project exists, so Google sign-in is unverified. Provide a project + the `EXPO_PUBLIC_FIREBASE_*` values to verify sign-in on web.
+**This is the only thing preventing sign-in.** Supply the four
+`EXPO_PUBLIC_FIREBASE_*` values listed above and complete the Console steps in
+`docs/FIREBASE_SETUP.md`. Google sign-in remains unverified until then.
 
 ### ~~3. Navigation: keep custom shell or migrate to Expo Router?~~ — SETTLED
 

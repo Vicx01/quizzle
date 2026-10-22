@@ -30,8 +30,14 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# Environment files.
+# SECURITY: ignore every .env variant by default. The previous pattern was
+# `.env*.local`, which only matched files ENDING in `.local` — plain `.env` and
+# `.env.production` were NOT ignored and would have been committed with real
+# credentials. `.env.example` is re-included below as the only tracked template.
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo

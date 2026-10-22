@@ -32,12 +32,17 @@ module.exports = {
       '<rootDir>/node_modules/@react-native-community/netinfo/jest/netinfo-mock.js',
   },
 
-  transform: jestPreset.transform,
+  // The preset only transforms .js/.ts. Add `.mjs` because the Firebase SDK
+  // ships ESM under .mjs paths (e.g. @firebase/util/dist/postinstall.mjs).
+  transform: {
+    ...jestPreset.transform,
+    '^.+\\.(js|jsx|mjs|ts|tsx)$': 'babel-jest',
+  },
 
-  // Preset default only un-ignores react-native; add Expo + RNTL so their
-  // ESM/untranspiled sources get babel-transformed too.
+  // Preset default only un-ignores react-native. Add Expo, RNTL and the
+  // Firebase SDK (which ships ESM under dist/esm) so babel transforms them.
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-native|expo(nent)?|@expo|expo-.*|react-native-web|@testing-library/react-native)/)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-native|expo(nent)?|@expo|expo-.*|react-native-web|@testing-library/react-native|firebase|@firebase)/)',
   ],
 
   // Preset setup (defines __DEV__, mocks native modules) plus our own globals.
