@@ -623,3 +623,54 @@ tsc 0 errors · eslint 0 errors / 7 warnings · prettier clean · jest 118 passe
 - Firestore security rules — **none exist yet**, so there is no data-access
   control until these are written
 - Server-side API layer, AI provider integration (deferred per owner instruction)
+
+---
+
+## 2026-10-22 — Sign-in diagnostics for embedded previews (Google 403)
+
+The owner hit a Google **403** ("That's an error. We're sorry, but you do not
+have access to this page") after tapping sign-in, and could not diagnose it
+because **the app runs in a sandbox iframe preview with no visible address bar**.
+
+A 403 from Google means the wiring works — Firebase accepted the API key and
+project and the flow launched; Google then refused the consent page. The likely
+causes are the framed preview, or an incomplete OAuth consent screen.
+
+### Added
+
+- `isEmbeddedInFrame()` — detects `window.self !== window.top`, treating a
+  cross-origin parent read failure as "framed".
+- `getCurrentOrigin()` — public accessor for the browser origin.
+- `describeAuthErrorWithCode()` — appends the raw Firebase code to the message.
+  Existing `describeAuthError` mapping is unchanged, so current tests hold.
+- `SignInDiagnostics` on the sign-in screen (testID `signin-diagnostics`):
+  - warns **"Open in a new browser tab to sign in"** when framed, explaining that
+    Google blocks its consent pages from being framed and popups are blocked in
+    frames;
+  - prints the current origin under "This app origin", so it can be copied into
+    Firebase Authorized Domains **without reading the address bar**;
+  - notes the 403 causes (consent screen incomplete / not a test user).
+- Docs: `docs/FIREBASE_SETUP.md` gains a "Google returns 403" section with the
+  four causes in priority order, plus a troubleshooting-table row.
+
+### Tests
+
+13 new tests (128 total, up from 118): origin shown/omitted, framing warning
+shown/hidden, diagnostics hidden when Firebase is misconfigured,
+`describeAuthErrorWithCode` with and without a code, and the environment
+helpers. One test initially assumed `window.location` existed in the jest
+environment; it does not, so it now covers both the null-guard and the browser
+path via `Object.defineProperty`.
+
+### Still UNVERIFIED
+
+Sign-in has still never completed. Root cause of the 403 not yet confirmed — it
+needs one attempt from a **normal browser tab**.
+
+**Next action for the owner:** open `https://8080-ihvd80mwkmpx5vxcn6r60.e2b.app`
+in a real browser tab and try sign-in there.
+
+### Checks
+
+tsc 0 errors · eslint 0 errors / 7 warnings · prettier clean · 128 tests / 12
+suites · bundle contains the new diagnostics and `window.self !== window.top`.

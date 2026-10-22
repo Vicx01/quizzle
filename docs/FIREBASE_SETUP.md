@@ -195,6 +195,33 @@ When you finish, note in `CHANGELOG.md`:
 - **Third-party cookie blocking** can prevent the popup from completing silently.
   If it hangs, allow third-party cookies for the preview host.
 
+### Google returns "403. That's an error … you do not have access to this page"
+
+This is **Google's** page, not Quizzle's. It is good news about the wiring: the
+flow did launch and Firebase accepted the API key and project. Google then
+refused to serve the consent page. Work through these in order.
+
+1. **You are inside an embedded preview — most common cause.**
+   Google will not render its sign-in pages in an `<iframe>`, and popups are
+   usually blocked there, so the flow cannot complete. The app detects framing
+   and shows an "Open in a new browser tab to sign in" warning.
+   → Open the preview URL in a normal browser tab and sign in from there.
+
+2. **The OAuth consent screen was never completed.**
+   Google Cloud → APIs & Services → OAuth consent screen → fill in app name,
+   user support email and developer contact email, then save.
+   → A project with no consent screen returns 403 instead of a sign-in page.
+
+3. **Consent screen is in "Testing" and your account is not a test user.**
+   → Add your own Google account under **Test users**, or publish the app.
+
+4. **Origin not allowlisted** — less likely for this exact message, because
+   Firebase normally surfaces `auth/unauthorized-domain` for that case.
+   → Authentication → Settings → Authorized domains.
+
+If you cannot read the address bar (the app is framed), the sign-in screen
+prints the exact origin under the "This app origin" label.
+
 ---
 
 ## 6. Troubleshooting
@@ -207,6 +234,7 @@ When you finish, note in `CHANGELOG.md`:
 | "Authentication is not configured for this project" | No provider enabled / Auth not set up | Enable Google provider                            |
 | "Sign-in was cancelled"                             | You closed the popup                  | Not an error — just retry                         |
 | "This screen is not configured" checklist stuck on  | Placeholder values still in `.env`    | Replace `your-…` values with real ones            |
+| Google 403 page, no app error                       | Framed preview, or consent screen     | New tab; finish OAuth consent screen              |
 
 ---
 

@@ -98,3 +98,55 @@ describe('SignInScreen — misconfigured', () => {
     expect(queryByLabelText('Sign in with Google')).toBeNull();
   });
 });
+
+describe('SignInScreen — sign-in environment diagnostics', () => {
+  it('shows the origin so it can be allowlisted without reading the address bar', () => {
+    const { getByText } = render(
+      <Harness>
+        <SignInScreen
+          onSignIn={() => {}}
+          configStatus={OK_STATUS}
+          origin="https://8080-abc123.e2b.app"
+        />
+      </Harness>
+    );
+    expect(getByText('https://8080-abc123.e2b.app')).toBeTruthy();
+  });
+
+  it('omits the origin line when the origin is unknown', () => {
+    const { queryByText } = render(
+      <Harness>
+        <SignInScreen onSignIn={() => {}} configStatus={OK_STATUS} origin={null} />
+      </Harness>
+    );
+    expect(queryByText(/Authorized domains/)).toBeNull();
+  });
+
+  it('warns to open a new tab when the app is framed in a preview', () => {
+    const { getByText, getByTestId } = render(
+      <Harness>
+        <SignInScreen onSignIn={() => {}} configStatus={OK_STATUS} embedded />
+      </Harness>
+    );
+    expect(getByTestId('signin-diagnostics')).toBeTruthy();
+    expect(getByText(/Open in a new browser tab to sign in/i)).toBeTruthy();
+  });
+
+  it('does not warn about framing in a normal top-level tab', () => {
+    const { queryByText } = render(
+      <Harness>
+        <SignInScreen onSignIn={() => {}} configStatus={OK_STATUS} embedded={false} />
+      </Harness>
+    );
+    expect(queryByText(/Open in a new browser tab to sign in/i)).toBeNull();
+  });
+
+  it('does not show environment diagnostics when Firebase is misconfigured', () => {
+    const { queryByTestId } = render(
+      <Harness>
+        <SignInScreen onSignIn={() => {}} configStatus={BROKEN_STATUS} embedded />
+      </Harness>
+    );
+    expect(queryByTestId('signin-diagnostics')).toBeNull();
+  });
+});

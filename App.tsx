@@ -19,8 +19,10 @@ import {
   signInWithGoogle,
   isAuthConfigured,
   consumeRedirectResult,
-  describeAuthError,
+  describeAuthErrorWithCode,
   isCancellation,
+  getCurrentOrigin,
+  isEmbeddedInFrame,
 } from './services/auth';
 import { getFirebaseConfigStatus, type ConfigStatus } from './services/firebase';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
@@ -56,6 +58,13 @@ export default function App() {
   // Read once: env vars are inlined at build time, so this cannot change at
   // runtime, but recomputing keeps the value stable across re-renders.
   const [configStatus] = useState<ConfigStatus>(() => getFirebaseConfigStatus());
+
+  // Sign-in environment, surfaced on the sign-in screen. Read once — the origin
+  // and framing cannot change without a fresh page load.
+  const [signInEnv] = useState(() => ({
+    origin: getCurrentOrigin(),
+    embedded: isEmbeddedInFrame(),
+  }));
 
   useEffect(() => {
     if (!isAuthConfigured()) {
@@ -95,7 +104,7 @@ export default function App() {
     } catch (error: unknown) {
       // A user-initiated cancel is not an error worth showing.
       if (!isCancellation(error)) {
-        setAuthError(describeAuthError(error));
+        setAuthError(describeAuthErrorWithCode(error));
       }
     } finally {
       setSigningIn(false);
@@ -117,6 +126,8 @@ export default function App() {
             error={authError}
             loading={signingIn}
             configStatus={configStatus}
+            origin={signInEnv.origin}
+            embedded={signInEnv.embedded}
           />
         ) : activeTab === 'generate' ? (
           <GenerateScreen

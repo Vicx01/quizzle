@@ -42,10 +42,26 @@ interface SignInScreenProps {
   loading?: boolean;
   /** When present and not `ok`, a setup checklist replaces the sign-in button. */
   configStatus?: ConfigStatus | null;
+  /**
+   * Current browser origin. Shown on screen so the value can be copied into
+   * Firebase's Authorized Domains without reading the address bar — which is
+   * not possible when the app runs inside an embedded preview.
+   */
+  origin?: string | null;
+  /** True when the app is framed inside an embedded preview (e.g. an iframe). */
+  embedded?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
-export function SignInScreen({ onSignIn, error, loading, configStatus, style }: SignInScreenProps) {
+export function SignInScreen({
+  onSignIn,
+  error,
+  loading,
+  configStatus,
+  origin,
+  embedded = false,
+  style,
+}: SignInScreenProps) {
   const colors = useColors();
   const { width } = useWindowDimensions();
   const isDesktop = isDesktopWidth(width);
@@ -83,6 +99,8 @@ export function SignInScreen({ onSignIn, error, loading, configStatus, style }: 
                 {error}
               </Text>
             ) : null}
+
+            <SignInDiagnostics origin={origin ?? null} embedded={embedded} />
           </>
         )}
 
@@ -132,6 +150,62 @@ function SetupChecklist({ problems }: { problems: ConfigProblem[] }) {
   );
 }
 
+/**
+ * On-screen diagnostics for the sign-in environment.
+ *
+ * This exists because the app is often viewed inside an embedded preview where
+ * the address bar is not visible and popups are blocked. Two problems are
+ * surfaced directly in the UI:
+ *
+ * 1. Being framed — Google refuses to render its consent pages inside a frame
+ *    and popups are commonly blocked there, so sign-in cannot complete.
+ * 2. The current origin — needed verbatim for Firebase's Authorized Domains
+ *    allowlist, but otherwise only visible in the URL bar.
+ */
+function SignInDiagnostics({ origin, embedded }: { origin: string | null; embedded: boolean }) {
+  const colors = useColors();
+  const styles = getStyles(colors, false);
+
+  return (
+    <View
+      style={[styles.diagPanel, embedded && styles.diagPanelWarning]}
+      testID="signin-diagnostics"
+    >
+      {embedded ? (
+        <>
+          <Text style={styles.diagTitle} accessibilityRole="alert">
+            Open in a new browser tab to sign in
+          </Text>
+          <Text style={styles.diagText}>
+            This app is running inside an embedded frame. Google blocks its sign-in pages from being
+            framed and popups are usually blocked there, so sign-in cannot finish in this view. Open
+            the preview URL in a normal browser tab and try again.
+          </Text>
+        </>
+      ) : null}
+
+      {origin ? (
+        <>
+          <Text style={styles.diagText}>
+            {
+              'This app origin — add it to Firebase Console → Authentication → Settings → Authorized domains:'
+            }
+          </Text>
+          <Text style={styles.diagOrigin} accessibilityRole="text">
+            {origin}
+          </Text>
+        </>
+      ) : null}
+
+      <Text style={styles.diagHint}>
+        If Google shows a 403, the usual causes are: the OAuth consent screen has not been completed
+        (app name + support email), or the consent screen is in Testing mode and this account is not
+        listed as a test user.
+      </Text>
+    </View>
+  );
+}
+
 function getStyles(colors: ReturnType<typeof useColors>, isDesktop: boolean) {
   // Keys are kept in alphabetical order to satisfy `react-native/sort-styles`.
   return StyleSheet.create({
@@ -151,6 +225,41 @@ function getStyles(colors: ReturnType<typeof useColors>, isDesktop: boolean) {
       justifyContent: 'center',
       paddingHorizontal: space[4],
       paddingVertical: space[8],
+    },
+    diagHint: {
+      color: colors.textTertiary,
+      fontSize: fontSize.xs,
+      marginTop: space[2],
+    },
+    diagOrigin: {
+      color: colors.textPrimary,
+      fontFamily: 'JetBrains Mono',
+      fontSize: fontSize.sm,
+      marginTop: space[1],
+      textAlign: 'center',
+    },
+    diagPanel: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: radius.small,
+      borderWidth: 1,
+      gap: space[1],
+      marginTop: space[6],
+      padding: space[4],
+      width: '100%',
+    },
+    diagPanelWarning: {
+      backgroundColor: colors.warningMuted,
+      borderColor: colors.warning,
+    },
+    diagText: {
+      color: colors.textSecondary,
+      fontSize: fontSize.xs,
+    },
+    diagTitle: {
+      color: colors.warning,
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.semibold,
     },
     error: {
       color: colors.danger,

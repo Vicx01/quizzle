@@ -5,7 +5,13 @@
  * These are pure-logic tests; no live Firebase project is contacted.
  */
 
-import { describeAuthError, isCancellation } from '../auth';
+import {
+  describeAuthError,
+  describeAuthErrorWithCode,
+  getCurrentOrigin,
+  isCancellation,
+  isEmbeddedInFrame,
+} from '../auth';
 
 function err(code: string, message?: string) {
   return { code, message: message ?? `Firebase: ${code}` };
@@ -60,5 +66,48 @@ describe('isCancellation', () => {
     expect(isCancellation(err('auth/popup-blocked'))).toBe(false);
     expect(isCancellation(new Error('boom'))).toBe(false);
     expect(isCancellation(null)).toBe(false);
+  });
+});
+
+describe('describeAuthErrorWithCode', () => {
+  it('keeps the actionable message and appends the raw code', () => {
+    const msg = describeAuthErrorWithCode(err('auth/unauthorized-domain'));
+    expect(msg).toMatch(/Authorized domains/i);
+    expect(msg).toContain('auth/unauthorized-domain');
+  });
+
+  it('omits the code line when the error has no code', () => {
+    const msg = describeAuthErrorWithCode(new Error('boom'));
+    expect(msg).toMatch(/boom/);
+    expect(msg).not.toMatch(/Error code:/);
+  });
+});
+
+describe('sign-in environment helpers', () => {
+  // This suite temporarily defines window.location; remove it again so other
+  // tests observe the same environment shape they started with.
+  afterEach(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (window as any).location;
+  });
+
+  it('degrades to null when there is no browser location', () => {
+    // The jest environment provides no window.location; the guard must return
+    // null rather than throwing.
+    expect(getCurrentOrigin()).toBeNull();
+  });
+
+  it('reads location.origin when running in a browser', () => {
+    Object.defineProperty(window, 'location', {
+      value: { origin: 'https://8080-abc123.e2b.app' },
+      configurable: true,
+      writable: true,
+    });
+    expect(getCurrentOrigin()).toBe('https://8080-abc123.e2b.app');
+  });
+
+  it('is not framed at the top level', () => {
+    // jsdom renders at the top level: window.self === window.top.
+    expect(isEmbeddedInFrame()).toBe(false);
   });
 });

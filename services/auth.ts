@@ -46,6 +46,34 @@ function currentOrigin(): string | null {
 }
 
 /**
+ * Public accessor for the current origin.
+ *
+ * Surfaced in the UI because embedded previews hide the address bar, leaving no
+ * other way to read the value that must be allowlisted in Firebase.
+ */
+export function getCurrentOrigin(): string | null {
+  return currentOrigin();
+}
+
+/**
+ * True when the app is running inside a frame (an embedded preview).
+ *
+ * Google refuses to render its consent pages inside a frame, and browsers
+ * typically block popups there, so the popup sign-in flow cannot complete. The
+ * UI warns the user to open the app in a real tab instead.
+ */
+export function isEmbeddedInFrame(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.self !== window.top;
+  } catch {
+    // Reading window.top throws when framed cross-origin — being unable to
+    // inspect the parent means we are certainly framed.
+    return true;
+  }
+}
+
+/**
  * Maps a Firebase Auth error to a message the user can act on.
  *
  * `auth/unauthorized-domain` is called out specially because it is by far the
@@ -99,6 +127,19 @@ export function describeAuthError(error: unknown): string {
 export function isCancellation(error: unknown): boolean {
   const code = (error as { code?: string } | null)?.code ?? '';
   return code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request';
+}
+
+/**
+ * `describeAuthError` plus the raw Firebase error code.
+ *
+ * The code is shown because some failures (notably a Google 403 raised before
+ * Firebase returns a typed error) are far easier to diagnose with the exact
+ * identifier than with the prose message alone.
+ */
+export function describeAuthErrorWithCode(error: unknown): string {
+  const code = (error as { code?: string } | null)?.code ?? '';
+  const message = describeAuthError(error);
+  return code ? `${message}\n\nError code: ${code}` : message;
 }
 
 /**
