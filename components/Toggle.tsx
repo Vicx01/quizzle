@@ -13,9 +13,7 @@ import {
   type TextStyle,
 } from 'react-native';
 import { useColors } from '../theme/ThemeContext';
-import { space, radius, fontSize, fontWeight } from '../theme/tokens';
-
-const fonts = { body: 'Inter' as const };
+import { space, fontSize, fontWeight } from '../theme/tokens';
 
 interface ToggleProps {
   label: string;
@@ -24,12 +22,7 @@ interface ToggleProps {
   style?: StyleProp<ViewStyle>;
 }
 
-export const Toggle = ({
-  label,
-  value,
-  onValueChange,
-  style,
-}: ToggleProps) => {
+export const Toggle = ({ label, value, onValueChange, style }: ToggleProps) => {
   const colors = useColors();
 
   const styles = useMemo(() => {
@@ -69,10 +62,10 @@ export const Toggle = ({
         top: 2,
       } as ViewStyle,
     };
-  }, [colors, value])
+  }, [colors, value]);
 
   return (
-    <Pressable style={styles.container} onPress={() => onValueChange(!value)}>
+    <Pressable style={[styles.container, style]} onPress={() => onValueChange(!value)}>
       <View style={styles.row}>
         <Text style={styles.label}>{label}</Text>
         <View style={styles.track}>

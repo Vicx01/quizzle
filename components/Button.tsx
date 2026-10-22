@@ -59,10 +59,7 @@ export const Button = ({
   let textColor: string;
 
   if (disabled) {
-    variantStyles = [
-      { backgroundColor: colors.accentMuted },
-      { borderColor: colors.border },
-    ];
+    variantStyles = [{ backgroundColor: colors.accentMuted }, { borderColor: colors.border }];
     textColor = colors.textTertiary;
   } else if (variant === 'primary') {
     variantStyles = [{ backgroundColor: colors.accent }];
@@ -83,16 +80,17 @@ export const Button = ({
   }
 
   return (
-    <Pressable
-      disabled={disabled || loading}
-      style={[baseStyles, variantStyles]}
-      {...props}
-    >
+    <Pressable disabled={disabled || loading} style={[baseStyles, variantStyles]} {...props}>
       <View style={styles.row}>
-        {loading && <View style={styles.spinner} />}
-        <Text style={[styles.text, { color: textColor }]}>
-          {loading ? '…' : label}
-        </Text>
+        {loading && (
+          <View
+            style={[
+              styles.spinner,
+              { borderColor: colors.spinnerTrack, borderTopColor: colors.spinnerHead },
+            ]}
+          />
+        )}
+        <Text style={[styles.text, { color: textColor }]}>{loading ? '…' : label}</Text>
       </View>
     </Pressable>
   );
@@ -107,22 +105,22 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   row: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: 'row',
     gap: space[2],
+    justifyContent: 'center',
+  },
+  // Colours are applied inline from tokens (see `colors.spinnerTrack` /
+  // `colors.spinnerHead`) so the literal values live only in the theme.
+  spinner: {
+    borderRadius: 8,
+    borderWidth: 2,
+    height: 16,
+    width: 16,
   },
   text: {
     fontFamily: fonts.body,
     fontSize: fontSize.sm,
     fontWeight: fontWeight.medium,
-  },
-  spinner: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderTopColor: '#FFFFFF',
   },
 });

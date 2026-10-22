@@ -3,65 +3,92 @@
  *
  * Theme controls live in Account/Settings (owner condition 4).
  * Default: system preference on first visit.
+ *
+ * Persistence uses the cross-platform storage adapter (AsyncStorage), NOT
+ * `localStorage`, so the same code runs on web and native.
+ *
+ * IMPORTANT: `useTheme()` throws outside a ThemeProvider. Components must be
+ * rendered inside <ThemeProvider>; test harnesses must wrap children in it
+ * (calling useTheme/useColors in the harness body itself will throw).
  */
 
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react';
-import { Appearance, ColorSchemeName } from 'react-native';
-import { lightColors, darkColors, ColorTokens } from './tokens';
+import { Appearance } from 'react-native';
+import type { ColorSchemeName } from 'react-native';
+import type { ColorTokens } from './tokens';
+import { lightColors, darkColors } from './tokens';
+import { getItem, setItem, STORAGE_KEYS } from '../services/storage';
 
-type ThemeMode = 'light' | 'dark' | 'system';
+export type ThemeMode = 'light' | 'dark' | 'system';
 
 type ThemeContextType = {
   theme: ThemeMode;
   colorScheme: ColorSchemeName;
   colors: ColorTokens;
   setTheme: (mode: ThemeMode) => void;
+  /** True until the stored preference has been read back. */
+  ready: boolean;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<ThemeMode>('system');
-  const systemScheme = Appearance.getColorScheme();
+  const [ready, setReady] = useState(false);
+  // Appearance.getColorScheme() can return null on some platforms.
+  const [systemScheme, setSystemScheme] = useState<ColorSchemeName | null>(() =>
+    Appearance.getColorScheme()
+  );
 
-  // Resolve actual color scheme: system follows OS, otherwise use mode directly
-  const colorScheme: ColorSchemeName =
-    mode === 'system' ? (systemScheme ?? 'light') : mode;
-
-  const colors: ColorTokens = (colorScheme === 'dark'
-    ? darkColors
-    : lightColors) as ColorTokens;
-
-  // Persist theme choice; on first read, respect system preference
+  // Track OS-level appearance changes while mode === 'system'.
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('quizzle:theme');
-      if (stored === 'light' || stored === 'dark' || stored === 'system') {
-        setMode(stored);
-      }
-    } catch {
-      // localStorage unavailable (e.g. SSR) — keep system default
-    }
+    const sub = Appearance.addChangeListener(({ colorScheme }) => {
+      setSystemScheme(colorScheme ?? null);
+    });
+    return () => sub.remove();
   }, []);
 
+  // Restore the saved preference once on mount.
   useEffect(() => {
-    try {
-      localStorage.setItem('quizzle:theme', mode);
-    } catch {
-      // ignore
-    }
-  }, [mode]);
+    let cancelled = false;
+    (async () => {
+      const stored = await getItem(STORAGE_KEYS.theme);
+      if (!cancelled) {
+        if (stored === 'light' || stored === 'dark' || stored === 'system') {
+          setMode(stored);
+        }
+        setReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Persist on change (skip the initial default so an unread value cannot
+  // overwrite a stored preference with 'system').
+  useEffect(() => {
+    if (!ready) return;
+    void setItem(STORAGE_KEYS.theme, mode);
+  }, [mode, ready]);
+
+  const colorScheme: ColorSchemeName = mode === 'system' ? (systemScheme ?? 'light') : mode;
+
+  const colors: ColorTokens = (colorScheme === 'dark' ? darkColors : lightColors) as ColorTokens;
+
+  const setTheme = useCallback((next: ThemeMode) => setMode(next), []);
 
   const value = useMemo<ThemeContextType>(
-    () => ({ theme: mode, colorScheme, colors, setTheme: setMode }),
-    [mode, colorScheme, colors]
+    () => ({ theme: mode, colorScheme, colors, setTheme, ready }),
+    [mode, colorScheme, colors, setTheme, ready]
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

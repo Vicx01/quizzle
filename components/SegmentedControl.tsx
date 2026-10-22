@@ -15,8 +15,6 @@ import {
 import { useColors } from '../theme/ThemeContext';
 import { space, radius, fontSize, fontWeight } from '../theme/tokens';
 
-const fonts = { body: 'Inter' as const };
-
 interface SegmentedControlProps {
   label: string;
   options: { value: string; label: string }[];
@@ -48,31 +46,31 @@ export const SegmentedControl = ({
         gap: space[1],
         marginTop: space[1],
       } as ViewStyle,
-      option: (selected: boolean) => ({
-        flex: 1,
-        height: 40,
-        borderRadius: radius.small,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: selected ? colors.accent : colors.border,
-        backgroundColor: selected
-          ? 'rgba(15, 98, 254, 0.06)'
-          : colors.surface,
-      }) as ViewStyle,
-      optionText: (selected: boolean) => ({
-        color: selected ? colors.accent : colors.textPrimary,
-        fontSize: fontSize.sm,
-        fontWeight: fw,
-      } as TextStyle),
+      option: (selected: boolean) =>
+        ({
+          flex: 1,
+          height: 40,
+          borderRadius: radius.small,
+          justifyContent: 'center',
+          alignItems: 'center',
+          borderWidth: 1,
+          borderColor: selected ? colors.accent : colors.border,
+          backgroundColor: selected ? 'rgba(15, 98, 254, 0.06)' : colors.surface,
+        }) as ViewStyle,
+      optionText: (selected: boolean) =>
+        ({
+          color: selected ? colors.accent : colors.textPrimary,
+          fontSize: fontSize.sm,
+          fontWeight: fw,
+        }) as TextStyle,
     };
-  }, [colors])
+  }, [colors]);
 
   return (
     <View style={[styles.container, style]}>
       <Text style={styles.label}>{label}</Text>
       <View style={styles.row}>
-        {options.map((opt) => {
+        {options.map(opt => {
           const selected = opt.value === value;
           return (
             <Pressable
@@ -80,9 +78,7 @@ export const SegmentedControl = ({
               style={styles.option(selected)}
               onPress={() => onValueChange(opt.value)}
             >
-              <Text style={styles.optionText(selected)}>
-                {opt.label}
-              </Text>
+              <Text style={styles.optionText(selected)}>{opt.label}</Text>
             </Pressable>
           );
         })}

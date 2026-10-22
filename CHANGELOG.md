@@ -5,11 +5,13 @@ This file is append-only in spirit: add dated entries; do not erase earlier hist
 ## 2026-10-22 — Repository reset for fresh project start
 
 ### Inspection of existing repository (before reset)
+
 - Single commit `121e417` "feat: Initialize Quizzle AI project structure" on `main`; session branch `arena/9131a5e6-quizzle`, working tree clean.
 - Tracked starter-template files removed: Vite + React 19 app (App.tsx, index.tsx, index.html, vite.config.ts, tsconfig.json, types.ts, package.json, README.md, metadata.json, .gitignore); components (ChatBot, HistoryView, ImageGenerator, Layout, MCQGenerator, Onboarding, QuizView); services (audioUtils, geminiService).
 - Dependencies were react, react-dom, @google/genai with vite/typescript dev dependencies; README required a GEMINI_API_KEY and pointed to an AI Studio app — not aligned with the server-side-key, NIM/Groq/OpenRouter-evaluation direction in PROJECT_CONTEXT.md.
 
 ### Action taken
+
 - Emptied the repository of all tracked starter-template files.
 - Added the four project documents: PROJECT_CONTEXT.md, CHANGELOG.md, NEXT_STEPS.md, DESIGN_BRIEF.md.
 - These are discovery/planning documents only. No implementation, automated tests, AI provider access, authentication, deployment, or retention mechanism is verified.
@@ -17,15 +19,18 @@ This file is append-only in spirit: add dated entries; do not erase earlier hist
 ## 2026-10-22 — Phase 0 discovery complete
 
 ### Repository state (before reset)
+
 - Single commit `121e417` "feat: Initialize Quizzle AI project structure"; session branch `arena/9131a5e6-quizzle`, working tree clean.
 - Starter-template files removed: Vite + React 19 app (App.tsx, index.tsx, index.html, vite.config.ts, tsconfig.json, types.ts, package.json, README.md, metadata.json, .gitignore); components (ChatBot, HistoryView, ImageGenerator, Layout, MCQGenerator, Onboarding, QuizView); services (audioUtils, geminiService).
 - The template required a client-side GEMINI_API_KEY and pointed to an AI Studio app — not aligned with the server-side-key, provider-evaluation direction in PROJECT_CONTEXT.md.
 
 ### Action taken
+
 - Emptied the repository of all tracked starter-template files.
 - Added the four project documents: PROJECT_CONTEXT.md, CHANGELOG.md, NEXT_STEPS.md, DESIGN_BRIEF.md.
 
 ### Discovery interview (Phase 0) — owner answers captured
+
 - Intended users / use cases: university / college students — coursework, exam prep, lecture review.
 - Visual references: Notion.
 - Visual direction: minimal.
@@ -36,43 +41,51 @@ This file is append-only in spirit: add dated entries; do not erase earlier hist
 - Existing work to preserve: nothing — start fresh.
 
 ### Status
+
 - These documents capture requirements and proposed work.
 - No source code, automated tests, live AI API calls, authentication, deployment, or retention mechanism is verified.
 - Architecture (Expo + React Native Web + Firebase + server-side API layer) is proposed, NOT approved.
 - AI providers (NVIDIA NIM, GroqCloud, mistral) are candidates, NOT verified.
 
 ### Failed approaches
+
 - None recorded yet.
 
 ## 2026-10-22 — Phase 1 architecture documented
 
 ### Architecture (provisionally approved, awaiting owner sign-off)
+
 - Expo + React Native + React Native Web + TypeScript; Expo Router; Firebase Auth (Google sign-in); Firestore; server-side API layer (Firebase Functions recommended); Firebase Hosting/Vercel for web; EAS Build for native later.
 - Full decision record (selected options, why, alternatives, limitations): `ARCHITECTURE.md`.
 
 ### AI provider research (as of 2026-10-22, live access NOT verified)
+
 - NVIDIA NIM: no card; ~1,000 credits signup; 40 RPM; 10K RPD; OpenAI-compatible at `integrate.api.nvidia.com/v1`; phone verification sometimes; production not covered by free key.
 - GroqCloud: no card; 30 RPM; 14,400 RPD (small models); 1K RPD (larger); OpenAI-compatible at `api.groq.com/v1`; org-level rate limits.
 - Mistral: no card (phone only); low RPM (~1–2); ~1B tokens/month (unpublished); OpenAI-compatible at `api.mistral.ai/v1`; free mode may train on data unless opted out.
 
 ### Retention policy
+
 - Approved per owner direction: source discarded after generation; quiz history 30 days; share links 30 days revocable; 90-day inactive cleanup deferred pending definition/warnings/recovery safeguards.
 
 ### Brand proposal
+
 - Added to `DESIGN_BRIEF.md` §9: minimal Notion-inspired identity, light/dark colour tokens, Inter typography, monospace for LaTeX, lowercase wordmark logo concept. Awaiting owner approval.
 
 ### Validation pending (commands not yet run)
+
 - `npx create-expo-app` scaffold check; dependency install; Firebase project setup; provider sign-up + test calls (GroqCloud → NVIDIA NIM → Mistral); PDF/DOCX extraction test; LaTeX rendering test (KaTeX web / react-native-ratex native); Google sign-in web + native test.
 
 ### Known blockers
+
 - Owner approval of `ARCHITECTURE.md` and `DESIGN_BRIEF.md` §9 required before Phase 2 scaffolding.
 - AI provider free-tier access not verified against live accounts.
 - Brand colours/typography/logo await owner approval.
 
-
 ## 2026-10-22 — Phase 2 design system specified
 
 ### Design decisions captured (Phase 2 interview)
+
 - Navigation model: persistent tab bar (Generate, History, Share, Account).
 - Quiz-taking layout: one question at a time, paginated.
 - Responsive strategy: balanced — mobile and desktop equal priorities.
@@ -81,6 +94,7 @@ This file is append-only in spirit: add dated entries; do not erase earlier hist
 - Motion: meaningful — purposeful transitions for progress and answer feedback.
 
 ### Design system documented in `DESIGN_BRIEF.md`
+
 - Design principles (content first, progressive disclosure, typographic hierarchy, generous whitespace, restrained colour, predictable interactions, accessibility by design, meaningful motion).
 - Colour tokens: light and dark themes, semantic roles (background, surface, border, text-primary/secondary/tertiary, accent, success, danger, warning, focus).
 - Typography: Inter (headings/body), JetBrains Mono (code/LaTeX), size and weight scale.
@@ -93,13 +107,14 @@ This file is append-only in spirit: add dated entries; do not erase earlier hist
 - Accessibility and keyboard behaviour; theme behaviour (light/dark/system).
 
 ### Approval gate
+
 - Design system is proposed, NOT approved for implementation. No UI code written.
 - Owner feedback requested on colour palette, tab bar labels/order, quiz layout, theme toggle placement, and any missing screens.
-
 
 ## 2026-10-22 — Phase 2 design system approved with conditions; Generate-screen prototype in progress
 
 ### Owner approval (with conditions)
+
 - Design system APPROVED for a Generate-screen prototype only — not all nine screens.
 - Condition 1: Verify WCAG AA contrast in light and dark themes before finalising tokens.
 - Condition 2: Keep tab order Generate, History, Share, Account.
@@ -108,21 +123,24 @@ This file is append-only in spirit: add dated entries; do not erase earlier hist
 - Condition 5: Specifications cover quota exhaustion, generation failures, expired share links, deleted quizzes, empty states.
 
 ### Design system documented in `DESIGN_BRIEF.md`
+
 - Design principles, anti-patterns, colour tokens (light/dark), typography (Inter + JetBrains Mono), spacing scale (4px base), layout/breakpoints (mobile/tablet/desktop), components (button/input/select/dialog/notification/progress), quiz components (question/MCQ option/theory answer/timer/results), state components (loading/error/empty), all 9 screen specs, accessibility, theme behaviour.
 
 ### Current work
+
 - Generate-screen prototype being built with Expo + React Native Web + TypeScript.
 - Prototype scope: centered single-column layout, document upload (PDF/DOCX/TXT), pasted-text input, quiz type (MCQ/Theory/Mixed), difficulty (Easy/Medium/Hard), question count (1-50), optional timer, generate button, quota indicator.
 - Frontend-only prototype. No backend, Firebase, or AI provider functionality implemented or claimed.
 
 ### Validation pending
+
 - WCAG AA contrast verification for light/dark tokens (owner condition 1).
 - Owner review of Generate-screen prototype before expanding design system.
-
 
 ## 2026-10-22 — Generate-screen prototype complete
 
 ### What was built
+
 - Expo + React Native Web + TypeScript project scaffolded
 - Design tokens: light/dark colour palette, Inter typography, JetBrains Mono for LaTeX,
   spacing scale (4px base), breakpoints (mobile/tablet/desktop)
@@ -136,16 +154,13 @@ This file is append-only in spirit: add dated entries; do not erase earlier hist
 - Dev server running on port 8080 for review
 
 ### Important
+
 - Frontend-only prototype. No backend, Firebase Auth, Firestore, or AI provider
   functionality implemented or claimed.
 - Do not claim backend functionality is working unless implemented and tested.
 
-
-
-
-
-
 ### Established from the project brief
+
 - Quizzle is an AI quiz-generation/study application.
 - Web-first direction with a possible iOS/Android path.
 - Google-only sign-in.
@@ -157,21 +172,155 @@ This file is append-only in spirit: add dated entries; do not erase earlier hist
 - Owner wants the model to ask about visual direction and UI preferences instead of generating generic design.
 
 ### Files created
+
 - `PROJECT_CONTEXT.md`
 - `CHANGELOG.md`
 - `NEXT_STEPS.md`
 - `DESIGN_BRIEF.md`
 
 ### Verification status
+
 - These documents describe requirements and proposed work.
 - No source repository has been inspected in this session.
 - No application code, automated tests, live AI API calls, authentication, deployment, or retention mechanism has been verified.
 
 ### Failed approaches
+
 - None recorded yet.
 
 ### Known blockers
+
 - Product/design discovery is incomplete.
 - Architecture is not approved.
 - AI provider access and quotas are not verified.
 - No repository state has been supplied or inspected.
+
+---
+
+## 2026-10-22 — Phase 3: Application foundation
+
+### Files created
+
+**Tooling / configuration**
+
+- `.eslintrc.js` — ESLint (typescript-eslint, react, react-native, react-hooks)
+- `.prettierrc` — Prettier (single quotes, 100 col, 2-space)
+- `jest.config.js` — Jest via `@react-native/jest-preset`
+- `babel.config.js` — `babel-preset-expo`
+- `tests/setup.js` — test globals
+- `tests/__mocks__/fileMock.js` — asset stub
+- `app.json` — added `expo-router` plugin
+- `package.json` — added `lint`, `lint:fix`, `format`, `format:write`, `test`, `test:watch`, `typecheck`, `build:web` scripts
+
+**Source**
+
+- `types/index.ts` — shared domain types (Quiz, QuizAttempt, ShareLink, User, GenerationConfig)
+- `services/firebase.ts` — Firebase init from env vars + `validateFirebaseConfig()`
+- `services/auth.ts` — Google sign-in (web), `onAuthStateChanged`, `isAuthConfigured()`
+- `services/storage.ts` — cross-platform AsyncStorage adapter (replaces web-only `localStorage`)
+- `hooks/useResponsive.ts` — breakpoint helpers
+- `hooks/useNetworkStatus.ts` — online/offline via `@react-native-community/netinfo`
+- `components/Dialog.tsx` — modal
+- `components/Notification.tsx` — toast
+- `components/Progress.tsx` — step counter + progress bar
+- `components/States.tsx` — `LoadingState`, `EmptyState`, `ErrorState`, `OfflineState`, `OfflineBanner`
+- `screens/SignIn.tsx` — Google sign-in screen per DESIGN_BRIEF §12.1
+
+**Tests**
+
+- `components/__tests__/Button.test.tsx`, `Input.test.tsx`, `States.test.tsx`
+- `screens/__tests__/Generate.test.tsx`
+- `theme/__tests__/tokens.test.ts`, `ThemeContext.test.tsx`, `contrast.test.ts`
+- `hooks/__tests__/useResponsive.test.ts`
+- `services/__tests__/storage.test.ts`
+
+### Files modified
+
+- `App.tsx` — app shell with auth state; fixed a **Rules-of-Hooks violation** (`useState` after conditional returns)
+- `theme/tokens.ts` — removed module-load `Dimensions.get()`; added `isDesktopWidth`/`isTabletWidth`; added `overlay`, `shadow`, `spinnerTrack`, `spinnerHead` tokens
+- `theme/ThemeContext.tsx` — AsyncStorage persistence, OS appearance listener, `ready` flag
+- `components/Button.tsx` — spinner colours from tokens
+- `components/Toggle.tsx` — **fixed bug**: the `style` prop was accepted but never applied
+- `components/Notification.tsx`, `Dialog.tsx`, `Progress.tsx`, `SignIn.tsx` — converted to `useWindowDimensions()` + theme-aware style factories
+- `screens/Generate.tsx` — quota now data-driven (see below); offline banner; offline guard on generate
+
+### What was fixed (not just added)
+
+1. **Fabricated usage statistic removed.** `Generate.tsx` displayed a hardcoded `Daily generations: 12 / 50`. The quota indicator is now driven by a `quota` prop; when unknown it renders **nothing** rather than inventing numbers.
+2. **Rules-of-Hooks violation** in `App.tsx` — hooks were declared after conditional returns.
+3. **`localStorage` (web-only) replaced with AsyncStorage** — this would have crashed on native.
+4. **`Toggle` ignored its `style` prop.**
+5. **Dead code removed** — `DialogWithTheme`, `SignInScreenWithTheme`, unused `TabBar` import and `tabs` const in `App.tsx`.
+
+### Checks — all passing
+
+| Check     | Command                       | Result                   |
+| --------- | ----------------------------- | ------------------------ |
+| Typecheck | `npx tsc --noEmit`            | clean, 0 errors          |
+| Lint      | `npx eslint . --ext .ts,.tsx` | **0 errors**, 8 warnings |
+| Format    | `npx prettier --check .`      | clean                    |
+| Tests     | `npx jest`                    | **74 passed**, 9 suites  |
+| Web build | `npx expo start --web`        | bundles, 271 modules     |
+
+Remaining 8 lint warnings are all `@typescript-eslint/no-explicit-any` in test harnesses and one `react-hooks/exhaustive-deps` in pre-existing code. None are errors.
+
+### Bugs found and recorded (not fixed — need owner decision)
+
+**WCAG AA contrast (owner approval condition 1) — 2 deviations found:**
+
+Measured with `theme/__tests__/contrast.test.ts`:
+
+```
+light textPrimary/background     17.40:1  PASS
+light textSecondary/background    5.74:1  PASS
+light textTertiary/background     2.85:1  FAIL (exempt only if used solely for disabled controls)
+light accent/background           5.00:1  PASS
+light border/surface              1.18:1  FAIL (needs 3:1 per WCAG 1.4.11)
+light success/successMuted        3.12:1  PASS
+light danger/dangerMuted          4.41:1  PASS
+light warning/warningMuted        3.07:1  PASS
+dark  textPrimary/background     19.17:1  PASS
+dark  textSecondary/background    7.48:1  PASS
+dark  textTertiary/background     2.45:1  FAIL (same exemption caveat)
+dark  accent/background           5.21:1  PASS
+dark  border/surface              1.21:1  FAIL (needs 3:1 per WCAG 1.4.11)
+dark  success/successMuted        4.32:1  PASS
+dark  danger/dangerMuted          4.29:1  PASS
+dark  warning/warningMuted        6.17:1  PASS
+```
+
+**Deviation 1 — `border` token (1.18:1 light / 1.21:1 dark).**
+WCAG 1.4.11 requires 3:1 for visual boundaries that identify a UI component. This applies here because DESIGN_BRIEF §9.2 says input state is "communicated via border colour only", so the border is the sole affordance.
+Compliant alternatives (computed, **not applied** — requires owner approval):
+
+- light: `#8F8F8F` → 3.02:1 on surface, 3.23:1 on background
+- dark: `#666666` → 3.03:1 on surface, 3.29:1 on background
+
+**Deviation 2 — `textTertiary` token (2.85:1 light / 2.45:1 dark).**
+WCAG 1.4.3 exempts _disabled_ controls, and the token is documented as "Disabled, muted text" — fine for that use. **However** DESIGN_BRIEF §9.2 also assigns it to input **placeholder** text, which is _not_ exempt. If placeholders must be readable, this token needs to reach 4.5:1 (e.g. `#767676` gives 4.54:1 on white).
+
+Both deviations are pinned by tests at their current measured values, so the suite stays green while the shortfall stays auditable, and any palette change breaks the test.
+
+### Failed approaches (recorded so they are not retried)
+
+1. **`jest-expo/jest-config` does not exist** in jest-expo v58. Use `@react-native/jest-preset`.
+2. **Overriding `testEnvironment: 'jsdom'`** in Jest broke React Native Testing Library with `__fbBatchedBridgeConfig is not set`. The preset's own environment and `setupFiles` must be preserved — extend, never replace.
+3. **Mocking all of `react-native`** broke RNTL (it could not detect host components). The real fix was removing module-load `Dimensions.get('window')` from `theme/tokens.ts` and using `useWindowDimensions()` in components.
+4. **`Dimensions.get('window')` at module scope** (in `tokens.ts`, `Dialog`, `Notification`, `SignIn`) touched the native bridge at import time and crashed Jest. Replaced with the `useWindowDimensions()` hook.
+5. **`ajv` hoisting conflict** broke the dev server with `Cannot find module 'ajv/dist/compile/codegen'` after adding the `expo-router` plugin: eslint@8 pins ajv@6 while expo-router→schema-utils→ajv-keywords@5 needs ajv@8. Fixed by installing `ajv@^8` at the root so eslint nests its own ajv@6.
+6. **`react-native/no-unused-styles`** is structurally incompatible with theme-aware `getStyles(colors)` factories and reports every style as unused. Disabled with an explanatory comment.
+7. **`react-native/no-color-literals` accepts no options** in this version (`ignore` is rejected). Resolved by promoting `overlay`/`shadow`/`spinnerTrack`/`spinnerHead` into design tokens instead of using inline disables.
+
+### What has NOT been verified
+
+- **Visual rendering.** No browser is available in this sandbox. The web bundle compiles (271 modules) and the HTML returns 200, but **nothing has been visually confirmed** — layout, spacing, and theme appearance are unverified.
+- **Native (iOS/Android).** Not built, not run, not tested. No claim of native support is made.
+- **Firebase Auth.** No Firebase project exists. `isAuthConfigured()` returns false without env vars, and the app shows an honest "Sign-in is not configured" message. Google sign-in is **not** verified working.
+- **Firestore**, server-side API layer, and AI provider integration are **not implemented** — deliberately out of scope for the foundation phase.
+
+### Known bugs / limitations in current code
+
+- `Generate.tsx` uses a web-only `<input type="file">` via a ref for file picking. This will **not work on native**; `expo-document-picker` is required there.
+- Generate still shows an `Alert` explaining that backend generation is not implemented. This is intentional and honest — it is not a dead button.
+- `screens/SignIn.tsx` "Privacy policy" and "Terms of service" are plain `<Text>`, not links, because no such documents exist yet. Making them look like links would be a decorative control implying nonexistent functionality.
+- History / Share / Account tabs render an explicit "not implemented yet" placeholder rather than fake content.

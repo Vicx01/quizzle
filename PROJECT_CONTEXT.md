@@ -1,6 +1,6 @@
 # Quizzle — Project Context
 
-**Status:** Phase 1 — architecture proposed, awaiting owner approval. No implementation work is verified.  
+**Status:** Phase 3 — application foundation complete and verified. Architecture implemented for the frontend; backend/AI not implemented.  
 **Last updated:** 2026-10-22  
 **Branch:** `arena/9131a5e6-quizzle`
 
@@ -12,17 +12,17 @@ Quizzle is an AI-powered study application that turns learning material into qui
 
 These were answered by the owner and are treated as confirmed, not assumed:
 
-| Decision | Confirmed value |
-|---|---|
-| Intended users | University / college students |
-| Main study use cases | Coursework, exam prep, lecture review |
-| Visual references | Notion |
-| Visual direction | Minimal |
-| Home-screen layout | Centered single-column focused on quiz generation |
-| Theme | Both light and dark (user-toggleable) |
-| Platform priority | Balanced — web and mobile equally |
-| Existing Quizzle assets to preserve | None — start completely fresh |
-| Brand colours / typography / logo | None yet — proposal in DESIGN_BRIEF.md §9, awaiting approval |
+| Decision                            | Confirmed value                                              |
+| ----------------------------------- | ------------------------------------------------------------ |
+| Intended users                      | University / college students                                |
+| Main study use cases                | Coursework, exam prep, lecture review                        |
+| Visual references                   | Notion                                                       |
+| Visual direction                    | Minimal                                                      |
+| Home-screen layout                  | Centered single-column focused on quiz generation            |
+| Theme                               | Both light and dark (user-toggleable)                        |
+| Platform priority                   | Balanced — web and mobile equally                            |
+| Existing Quizzle assets to preserve | None — start completely fresh                                |
+| Brand colours / typography / logo   | None yet — proposal in DESIGN_BRIEF.md §9, awaiting approval |
 
 ## 3. Established product requirements (unchanged)
 
@@ -49,17 +49,22 @@ Question quality, answer correctness, and source coverage take priority over gen
 
 Evaluate in this order. All three permit free access without a credit card, but live registration, quotas, and model availability must be verified against actual accounts before selection. **Never enable paid usage without explicit owner approval.**
 
-| Provider | Sign-up | Card required? | Published free limits | Endpoint (OpenAI-compatible) | Notes |
-|---|---|---|---|---|---|
-| NVIDIA NIM | build.nvidia.com (Developer Program) | No | ~1,000 credits signup; 40 RPM; 10K RPD | `integrate.api.nvidia.com/v1` | Phone verification sometimes; production not covered by free key; per-model deprecation dates posted |
-| GroqCloud | console.groq.com (email) | No | 30 RPM; 14,400 RPD (small models); 1K RPD (larger) | `api.groq.com/v1` | Rate limits at org level; adding card (zero spend) raises limits 10x |
-| Mistral | console.mistral.ai | No (phone only) | Low RPM (~1–2); ~1B tokens/month (unpublished) | `api.mistral.ai/v1` | Free mode may train on data unless opted out; must activate Studio billing section |
+| Provider   | Sign-up                              | Card required?  | Published free limits                              | Endpoint (OpenAI-compatible)  | Notes                                                                                                |
+| ---------- | ------------------------------------ | --------------- | -------------------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------- |
+| NVIDIA NIM | build.nvidia.com (Developer Program) | No              | ~1,000 credits signup; 40 RPM; 10K RPD             | `integrate.api.nvidia.com/v1` | Phone verification sometimes; production not covered by free key; per-model deprecation dates posted |
+| GroqCloud  | console.groq.com (email)             | No              | 30 RPM; 14,400 RPD (small models); 1K RPD (larger) | `api.groq.com/v1`             | Rate limits at org level; adding card (zero spend) raises limits 10x                                 |
+| Mistral    | console.mistral.ai                   | No (phone only) | Low RPM (~1–2); ~1B tokens/month (unpublished)     | `api.mistral.ai/v1`           | Free mode may train on data unless opted out; must activate Studio billing section                   |
 
 Keep provider-specific logic replaceable behind an `AIProvider` interface so the AI provider can be swapped without rewriting the app.
 
-## 5. Architecture — APPROVED (provisionally, Phase 1), design system APPROVED with conditions (Phase 2)
+## 5. Architecture — APPROVED (provisionally, Phase 1), design system APPROVED with conditions (Phase 2), foundation implemented (Phase 3)
+
+**Phase 3 note:** the frontend stack, design system, navigation shell and sign-in
+screen are implemented. Firestore, the server-side API layer, and the AI provider
+are **not** implemented — see §10.
 
 **Selected stack:**
+
 - Expo + React Native + React Native Web + TypeScript
 - Expo Router for navigation
 - Firebase Authentication with Google sign-in
@@ -111,13 +116,37 @@ Do not finalise the design system or build all screens until the owner approves 
 
 ## 10. Current state
 
-Repository inspected and reset on `arena/9131a5e6-quizzle`. Starter-template Vite/React/Gemini app removed. Four planning documents plus `ARCHITECTURE.md` present. Phase 0 discovery complete. Phase 1 architecture documented and provisionally approved.
+**Phase 3 (application foundation) is complete and verified.**
+
+- Project structure, TypeScript strict mode, ESLint, Prettier and Jest are configured.
+- Design tokens and reusable components are implemented (light + dark).
+- Sign-in screen and app shell with tab navigation are implemented.
+- Loading / empty / error / offline states are implemented.
+- Checks: typecheck clean, lint 0 errors, format clean, **74 tests passing**.
+- Web bundle compiles (271 modules, HTTP 200).
+
+**Deliberately NOT implemented:** Firestore, server-side API layer, AI provider
+integration, and live Google sign-in. No backend functionality is claimed.
+
+**Owner condition 1 (WCAG AA contrast) has been verified** — two deviations found
+in the approved palette (`border` and `textTertiary`). They are documented in
+`DESIGN_BRIEF.md` §16 and `CHANGELOG.md`, pinned by tests, and **await an owner
+decision**. The approved palette was not changed unilaterally.
+
+**Not verified:** visual rendering (no browser in the sandbox), native iOS/Android
+(no build or run), Firebase Auth (no project configured), AI provider access
+(no keys).
+
+See `NEXT_STEPS.md` for the Phase 4 acceptance criteria and the blocking decisions.
 
 ## 11. Key open decisions
 
+- **WCAG AA contrast deviations** — decision needed on the `border` and `textTertiary` tokens (see DESIGN_BRIEF.md §16). Blocking token finalisation.
+- **Firebase project** — needed before Google sign-in can be verified.
+- **Navigation** — keep the custom tab shell or migrate to Expo Router (installed but unused).
 - Final owner approval of `ARCHITECTURE.md` (stack, data model, security, provider order, deployment).
 - AI provider selection after live free-tier verification (NVIDIA NIM / GroqCloud / Mistral).
 - File size, text length, generation frequency, and storage quotas (not yet finalised).
-- Theory-question grading approach: AI-assisted grading against a transparent rubric, with review/self-assessment option (approved in principle; details in Phase 3).
+- Theory-question grading approach: AI-assisted grading against a transparent rubric, with review/self-assessment option (approved in principle; details in a later phase).
 - OCR for scanned PDFs: out of scope for initial release; detect and report limitation.
-- Brand colours, typography, and logo: proposal in DESIGN_BRIEF.md §9, awaiting approval.
+- Brand colours, typography, and logo: implemented from DESIGN_BRIEF.md §9; contrast deviations pending resolution.

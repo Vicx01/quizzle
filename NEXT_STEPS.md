@@ -1,95 +1,144 @@
 # Quizzle — Next Steps
 
-**Current phase:** Phase 2 — design system and UX (prototype complete)  
-**Status:** Design system APPROVED with conditions; Generate-screen prototype COMPLETE — ready for owner review  
-**Last updated:** 2026-10-22  
+**Current phase:** Phase 3 — application foundation (COMPLETE, verified)
+
+**Status:** Foundation built and all checks green. Two WCAG contrast deviations found and recorded, awaiting owner decision. Firebase/AI/backend deliberately NOT implemented.
+
+**Last updated:** 2026-10-22
+
 **Branch:** `arena/9131a5e6-quizzle`
 
-## What was done in Phase 0
+---
 
-Discovery interview completed. Confirmed: university students as users, Notion as visual reference, minimal visual direction, centered single-column home screen, light + dark themes, balanced web/mobile priority, no existing assets to preserve.
+## Phase 0 (complete)
 
-## What was done in Phase 1
+Discovery interview. Confirmed: university students, Notion as visual reference, minimal direction, centered single-column home, light + dark themes, balanced web/mobile, no existing assets.
 
-Architecture documented in `ARCHITECTURE.md` (provisionally approved): Expo + React Native Web + TypeScript, Expo Router, Firebase Auth (Google), Firestore, server-side API layer, replaceable AI provider (GroqCloud → NVIDIA NIM → Mistral). AI provider free tiers researched (none require a card; live verification pending).
+## Phase 1 (complete)
 
-## What was done in Phase 2
+Architecture documented in `ARCHITECTURE.md` (provisionally approved): Expo + React Native Web + TypeScript, Expo Router, Firebase Auth (Google), Firestore, server-side API layer, replaceable AI provider (GroqCloud → NVIDIA NIM → Mistral).
 
-1. Ran design interview; confirmed navigation (tab bar), quiz layout (one question at a time), breakpoints (balanced), progress/timer (subtle), theme toggle (settings only), motion (meaningful).
-2. Defined design system in `DESIGN_BRIEF.md`: principles, colour tokens (light/dark), typography, spacing, layout/breakpoints, components, quiz components, state components, all 9 screen specs, accessibility, theme behaviour.
-3. **Design system APPROVED with owner conditions** (see `DESIGN_BRIEF.md` §15): verify WCAG AA contrast before finalising tokens; tab order Generate/History/Share/Account; one-question-at-a-time with Previous/Next + review step; theme in Settings (Light/Dark/System); cover quota exhaustion, generation failures, expired share links, deleted quizzes, empty states.
-4. Generate-screen prototype in progress (see below).
+## Phase 2 (complete)
 
-## Current work: Generate-screen prototype
+Design system defined in `DESIGN_BRIEF.md` and approved with conditions. Generate-screen prototype built and reviewed.
 
-**Goal:** Functional prototype of the Generate screen using the design tokens, shown at mobile and desktop widths in both light and dark themes.
+## Phase 3 (complete — application foundation)
 
-**Scope (this screen only — not all nine screens):**
-- Centered single-column layout
-- Document upload (PDF, DOCX, TXT) + pasted-text input
-- Quiz type: MCQ / Theory / Mixed
-- Difficulty: Easy / Medium / Hard
-- Question count: 1–50
-- Optional timer: toggle + minutes input
-- Generate button (disabled until valid input)
-- Quota indicator (subtle)
-- Empty/loading/error states specified but not all implemented in prototype
+### What works
 
-**Tech stack:** Expo + React Native Web + TypeScript (per approved architecture).
+- Project structure: `components/`, `screens/`, `theme/`, `hooks/`, `services/`, `types/`, `tests/`
+- TypeScript strict mode, ESLint, Prettier, Jest all configured and passing
+- Design tokens implemented (light + dark), theme context with persistence
+- Reusable components: Button, Input, SegmentedControl, Toggle, TabBar, Dialog, Notification, Progress, States
+- Responsive layouts via `useResponsive()` / `useWindowDimensions()`
+- Sign-in screen (Google) per DESIGN_BRIEF §12.1
+- App shell with auth state, tab navigation (Generate, History, Share, Account)
+- Loading / empty / error / offline states
+- **74 automated tests passing** across 9 suites
 
-**Not yet implemented (by design):**
-- All other 8 screens
-- Firebase Auth / Firestore backend
-- AI provider integration (no backend claims made)
-- Backend functionality of any kind (prototype is frontend-only)
+### Verified by running
 
-## Acceptance criteria for Phase 2 (prototype)
+| Check      | Command                       | Result                |
+| ---------- | ----------------------------- | --------------------- |
+| Typecheck  | `npx tsc --noEmit`            | 0 errors              |
+| Lint       | `npx eslint . --ext .ts,.tsx` | 0 errors, 8 warnings  |
+| Format     | `npx prettier --check .`      | clean                 |
+| Tests      | `npx jest`                    | 74 passed / 9 suites  |
+| Web bundle | `npx expo start --web`        | 271 modules, HTTP 200 |
 
-- [x] Design principles defined.
-- [x] Colour tokens (light + dark) defined.
-- [x] Typography scale and font choices defined.
-- [x] Spacing scale defined.
-- [x] Layout and responsive breakpoints defined.
-- [x] Components specified (button, input, select, dialog, notification, progress).
-- [x] Quiz components specified.
-- [x] State components specified.
-- [x] All 9 screens specified.
-- [x] Accessibility and keyboard behaviour defined.
-- [x] Light/dark theme behaviour defined.
-- [x] Owner approval of design direction (obtained with conditions).
-- [x] Generate-screen prototype implemented with design tokens.
-- [x] Prototype shown at mobile + desktop widths in light + dark themes.
-- [ ] WCAG AA contrast verification (condition 1) — pending.
+### Bugs fixed during this phase
 
-## Remaining approvals before Phase 3 implementation
+1. Removed a **fabricated usage statistic** (`Daily generations: 12 / 50`) — quota is now data-driven and renders nothing when unknown.
+2. Fixed a **Rules-of-Hooks violation** in `App.tsx`.
+3. Replaced web-only **`localStorage` with AsyncStorage** (would have crashed on native).
+4. Fixed **`Toggle` ignoring its `style` prop**.
+5. Removed dead code (`DialogWithTheme`, `SignInScreenWithTheme`, unused imports).
 
-1. **Generate-screen prototype review** — Owner reviews the prototype before design system is expanded across the application.
-2. **WCAG AA contrast verification** — Verify light/dark token contrast (owner condition 1).
-3. **Architecture approval** — Owner confirms `ARCHITECTURE.md` (still provisionally approved from Phase 1).
-4. **Provider selection after live verification** — Verify free-tier access for GroqCloud → NVIDIA NIM → Mistral before selecting. Do not incur paid usage without explicit approval.
+### Failed approaches — do not retry
 
-## Phase 3 acceptance criteria (next phase, not yet started)
+- `jest-expo/jest-config` does not exist in v58 → use `@react-native/jest-preset`.
+- Do **not** override Jest `testEnvironment` with `jsdom` → `__fbBatchedBridgeConfig is not set`.
+- Do **not** mock all of `react-native` → RNTL cannot detect host components.
+- Do **not** call `Dimensions.get('window')` at module scope → crashes Jest.
+- `react-native/no-unused-styles` is incompatible with `getStyles(colors)` factories → disabled.
+- `react-native/no-color-literals` accepts no options in this version.
 
-- [ ] Expo + React Native Web + TypeScript project scaffolded.
-- [ ] Design system implemented as reusable tokens + components.
-- [ ] Firebase Auth Google sign-in working on web.
-- [ ] Firestore with security rules deployed.
-- [ ] Server-side API layer with replaceable `AIProvider` interface.
-- [ ] AI provider free-tier verified and connected behind the interface.
-- [ ] Home quiz-generation screen implemented per spec.
-- [ ] Quiz-taking screen (one question at a time) implemented per spec.
-- [ ] Quiz completion/results screen implemented per spec.
-- [ ] Lint, type-check, and tests passing in CI.
-- [ ] Deployable web build.
+---
 
-## Suggested next prompt
+## Decisions needed from the owner (blocking)
 
-Review the Generate-screen prototype (mobile + desktop, light + dark). Approve or request changes. Verify WCAG AA contrast of tokens. Once approved, begin Phase 3: scaffold the full Expo project, implement the design system tokens/components, set up Firebase Auth + Firestore, and verify AI provider free-tier access before writing provider-specific code.
+### 1. WCAG AA contrast — 2 deviations (approval condition 1)
 
-## Outstanding items to update after approval
+Full measurements are in `CHANGELOG.md` and `theme/__tests__/contrast.test.ts`.
 
-- `DESIGN_BRIEF.md`: record prototype feedback and WCAG contrast results.
-- `ARCHITECTURE.md`: mark architecture as approved or revise decisions.
-- `PROJECT_CONTEXT.md`: update section 5 (architecture status) and section 11 (open decisions).
-- `CHANGELOG.md`: append dated entries for prototype review and Phase 3 work.
-- `NEXT_STEPS.md`: advance to Phase 3 acceptance criteria as work completes.
+**a) `border` token fails WCAG 1.4.11** (light 1.18:1, dark 1.21:1; needs 3:1).
+Applies because DESIGN_BRIEF §9.2 says input state is "communicated via border colour only".
+Options:
+
+- Keep `#E5E5E5` / `#2A2A2A` (current, non-compliant, preserves the airy look)
+- Change to `#8F8F8F` / `#666666` (compliant, visibly heavier borders)
+
+**b) `textTertiary` fails 4.5:1** (light 2.85:1, dark 2.45:1).
+Exempt **only** for disabled controls. DESIGN_BRIEF §9.2 also uses it for **placeholder** text, which is not exempt.
+Options:
+
+- Restrict `textTertiary` to disabled controls only, and give placeholders a compliant colour
+- Raise `textTertiary` to ~`#767676`
+
+### 2. Firebase project
+
+No Firebase project exists, so Google sign-in is unverified. Provide a project + the `EXPO_PUBLIC_FIREBASE_*` values to verify sign-in on web.
+
+### 3. Navigation: keep custom shell or migrate to Expo Router?
+
+`expo-router` is installed and registered in `app.json`, but the app currently uses a custom tab shell. Migrating is a separate change and should be approved before being undertaken.
+
+---
+
+## Not verified (explicitly)
+
+- **Visual rendering** — no browser in this sandbox; bundle compiles but appearance is unconfirmed.
+- **Native iOS/Android** — never built or run. No native support is claimed.
+- **Firebase Auth / Firestore** — not configured; no live sign-in test.
+- **AI provider access** — no keys, no live calls.
+
+---
+
+## Phase 4 acceptance criteria (next phase)
+
+**Depends on the owner decisions above.**
+
+1. Owner decision recorded on the two WCAG contrast deviations; tokens updated accordingly.
+2. Firebase project created; `EXPO_PUBLIC_FIREBASE_*` configured.
+3. Google sign-in **verified working on web** (popup + redirect).
+4. Firestore created with security rules deployed (ownership enforced server-side).
+5. Server-side API layer scaffolded with the replaceable `AIProvider` interface (ARCHITECTURE.md §3.6).
+6. **AI provider free-tier verified with a live account** before any provider-specific code — order: GroqCloud → NVIDIA NIM → Mistral. No paid usage without explicit approval.
+7. `expo-document-picker` integrated to replace the web-only `<input type="file">` in `Generate.tsx`.
+8. Backend quota endpoint wired to the `quota` prop so the indicator shows real data.
+9. PDF/DOCX/TXT extraction validated server-side; scanned-PDF detection confirmed.
+10. LaTeX rendering validated (KaTeX web; native renderer evaluated).
+11. CI (GitHub Actions) running lint + typecheck + tests on push.
+12. Native build attempted (EAS), with results recorded honestly — including failures.
+
+---
+
+## Outstanding commands
+
+```bash
+npm run typecheck      # tsc --noEmit
+npm run lint           # eslint
+npm run format         # prettier --check
+npm test               # jest
+npm run web            # expo start --web
+```
+
+Not yet runnable / not yet run:
+
+- Firebase Auth live test (needs project + env vars)
+- Firestore rules deployment (`firebase deploy --only firestore:rules`)
+- AI provider live calls (needs keys)
+- `eas build` for native (needs EAS account)
+- Visual/browser verification (needs a browser)
+- PDF/DOCX extraction tests (needs server-side layer)
+- LaTeX rendering tests (needs renderer integration)

@@ -6,10 +6,6 @@
  * WCAG AA contrast must be verified before finalising (owner condition 1).
  */
 
-import { Dimensions } from 'react-native';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 // Breakpoints (balanced strategy — mobile and desktop equal)
 export const BREAKPOINTS = {
   mobile: 0,
@@ -17,8 +13,20 @@ export const BREAKPOINTS = {
   desktop: 1024,
 } as const;
 
-export const isDesktop = SCREEN_WIDTH >= BREAKPOINTS.desktop;
-export const isTablet = SCREEN_WIDTH >= BREAKPOINTS.tablet;
+/**
+ * Breakpoint helpers.
+ * Deliberately NOT computed at module load — `Dimensions.get('window')` at import
+ * time touches the native bridge, which is unavailable in Jest/jsdom and breaks
+ * server-side/first-render assumptions. Use `useResponsive()` in components so the
+ * value is reactive to window changes.
+ */
+export function isDesktopWidth(width: number): boolean {
+  return width >= BREAKPOINTS.desktop;
+}
+
+export function isTabletWidth(width: number): boolean {
+  return width >= BREAKPOINTS.tablet;
+}
 
 // Max content width: 720 px on desktop, full width with padding on mobile
 export const MAX_CONTENT_WIDTH = 720;
@@ -63,6 +71,10 @@ export const lightColors = {
   warning: '#D97706',
   warningMuted: '#FFFBEB',
   focus: '#0F62FE',
+  overlay: 'rgba(0, 0, 0, 0.4)',
+  shadow: '#000000',
+  spinnerTrack: 'rgba(255, 255, 255, 0.3)',
+  spinnerHead: '#FFFFFF',
 } as const;
 
 // Dark theme colors
@@ -83,6 +95,10 @@ export const darkColors = {
   warning: '#F59E0B',
   warningMuted: '#452A03',
   focus: '#3B82F6',
+  overlay: 'rgba(0, 0, 0, 0.4)',
+  shadow: '#000000',
+  spinnerTrack: 'rgba(255, 255, 255, 0.3)',
+  spinnerHead: '#FFFFFF',
 } as const;
 
 export type ThemeName = 'light' | 'dark';

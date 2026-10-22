@@ -83,7 +83,7 @@ export const Input = ({
         marginLeft: 2,
       } as TextStyle,
     };
-  }, [colors, error, disabled, multiline])
+  }, [colors, error, disabled, multiline]);
 
   return (
     <View style={[styles.container, containerStyle]}>

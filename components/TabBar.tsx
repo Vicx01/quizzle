@@ -32,11 +32,7 @@ interface TabBarProps {
   style?: StyleProp<ViewStyle>;
 }
 
-export const TabBar = ({
-  activeTab,
-  onTabChange,
-  style,
-}: TabBarProps) => {
+export const TabBar = ({ activeTab, onTabChange, style }: TabBarProps) => {
   const colors = useColors();
 
   const styles = useMemo(() => {
@@ -58,28 +54,28 @@ export const TabBar = ({
         borderBottomWidth: IS_MOBILE ? 0 : 1,
         borderBottomColor: colors.border,
       } as ViewStyle,
-      tab: (active: boolean) => ({
-        paddingVertical: IS_MOBILE ? 6 : 8,
-        paddingHorizontal: IS_MOBILE ? 10 : 14,
-        borderRadius: radiusMd(),
-        borderWidth: active ? 1 : 0,
-        borderColor: active ? colors.accent : 'transparent',
-        backgroundColor: active
-          ? 'rgba(15, 98, 254, 0.06)'
-          : 'transparent',
-      }) as ViewStyle,
-      tabText: (active: boolean) => ({
-        color: active ? colors.accent : colors.textSecondary,
-        fontSize: fontSize.sm,
-        fontWeight: active ? fw : fn,
-      } as TextStyle),
+      tab: (active: boolean) =>
+        ({
+          paddingVertical: IS_MOBILE ? 6 : 8,
+          paddingHorizontal: IS_MOBILE ? 10 : 14,
+          borderRadius: radiusMd(),
+          borderWidth: active ? 1 : 0,
+          borderColor: active ? colors.accent : 'transparent',
+          backgroundColor: active ? 'rgba(15, 98, 254, 0.06)' : 'transparent',
+        }) as ViewStyle,
+      tabText: (active: boolean) =>
+        ({
+          color: active ? colors.accent : colors.textSecondary,
+          fontSize: fontSize.sm,
+          fontWeight: active ? fw : fn,
+        }) as TextStyle,
     };
-  }, [colors, IS_MOBILE])
+  }, [colors, IS_MOBILE]);
 
   return (
     <View style={[styles.container, style]}>
       <View style={styles.bar}>
-        {tabs.map((tab) => {
+        {tabs.map(tab => {
           const active = activeTab === tab.key;
           return (
             <Pressable

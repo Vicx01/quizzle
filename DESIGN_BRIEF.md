@@ -16,22 +16,22 @@ Create a distinctive, clear, trustworthy study tool whose main action — turnin
 
 ## 2. Confirmed decisions (Phase 0 discovery + Phase 2 design interview)
 
-| Decision | Value |
-|---|---|
-| Intended users | University / college students — coursework, exam prep, lecture review |
-| Visual reference | Notion |
-| Visual direction | Minimal |
-| Home-screen layout | Centered single-column focused on quiz generation |
-| Theme | Both light and dark (user-toggleable) |
-| Platform priority | Balanced — web and mobile equally |
-| Existing Quizzle assets to preserve | None — start completely fresh |
-| Navigation model | Persistent tab bar (Generate, History, Share, Account) |
-| Quiz-taking layout | One question at a time, paginated |
-| Responsive strategy | Balanced — mobile and desktop treated as equal priorities |
-| Progress/timer prominence | Subtle — small step counter (e.g. 3/10) and compact timer |
-| Theme toggle location | Settings only (account screen) |
-| Motion | Meaningful — purposeful transitions for progress and answer feedback |
-| Brand colours/typography/logo | Proposed in §9, awaiting owner approval |
+| Decision                            | Value                                                                 |
+| ----------------------------------- | --------------------------------------------------------------------- |
+| Intended users                      | University / college students — coursework, exam prep, lecture review |
+| Visual reference                    | Notion                                                                |
+| Visual direction                    | Minimal                                                               |
+| Home-screen layout                  | Centered single-column focused on quiz generation                     |
+| Theme                               | Both light and dark (user-toggleable)                                 |
+| Platform priority                   | Balanced — web and mobile equally                                     |
+| Existing Quizzle assets to preserve | None — start completely fresh                                         |
+| Navigation model                    | Persistent tab bar (Generate, History, Share, Account)                |
+| Quiz-taking layout                  | One question at a time, paginated                                     |
+| Responsive strategy                 | Balanced — mobile and desktop treated as equal priorities             |
+| Progress/timer prominence           | Subtle — small step counter (e.g. 3/10) and compact timer             |
+| Theme toggle location               | Settings only (account screen)                                        |
+| Motion                              | Meaningful — purposeful transitions for progress and answer feedback  |
+| Brand colours/typography/logo       | Proposed in §9, awaiting owner approval                               |
 
 ---
 
@@ -66,47 +66,48 @@ Colours are defined as semantic CSS custom properties. Light and dark themes swa
 
 ### Light theme
 
-| Token | Role | Hex |
-|---|---|---|
-| `--color-background` | Page background | `#FFFFFF` |
-| `--color-surface` | Elevated surfaces (inputs, modals) | `#F7F7F7` |
-| `--color-border` | Subtle dividers, input borders | `#E5E5E5` |
-| `--color-text-primary` | Body text, headings | `#1A1A1A` |
+| Token                    | Role                                  | Hex       |
+| ------------------------ | ------------------------------------- | --------- |
+| `--color-background`     | Page background                       | `#FFFFFF` |
+| `--color-surface`        | Elevated surfaces (inputs, modals)    | `#F7F7F7` |
+| `--color-border`         | Subtle dividers, input borders        | `#E5E5E5` |
+| `--color-text-primary`   | Body text, headings                   | `#1A1A1A` |
 | `--color-text-secondary` | Secondary text, captions, helper text | `#666666` |
-| `--color-text-tertiary` | Disabled, muted text | `#999999` |
-| `--color-accent` | Primary actions, links | `#0F62FE` |
-| `--color-accent-hover` | Pressed / hover state | `#0D55E8` |
-| `--color-accent-muted` | Disabled primary action | `#C7C7C7` |
-| `--color-success` | Correct answers, success states | `#16A34A` |
-| `--color-success-muted` | Correct answer background (light) | `#ECFDF3` |
-| `--color-danger` | Incorrect answers, errors | `#DC2626` |
-| `--color-danger-muted` | Incorrect answer background (light) | `#FEF2F2` |
-| `--color-warning` | Quota, warnings | `#D97706` |
-| `--color-warning-muted` | Warning background (light) | `#FFFBEB` |
-| `--color-focus` | Keyboard focus ring | `#0F62FE` |
+| `--color-text-tertiary`  | Disabled, muted text                  | `#999999` |
+| `--color-accent`         | Primary actions, links                | `#0F62FE` |
+| `--color-accent-hover`   | Pressed / hover state                 | `#0D55E8` |
+| `--color-accent-muted`   | Disabled primary action               | `#C7C7C7` |
+| `--color-success`        | Correct answers, success states       | `#16A34A` |
+| `--color-success-muted`  | Correct answer background (light)     | `#ECFDF3` |
+| `--color-danger`         | Incorrect answers, errors             | `#DC2626` |
+| `--color-danger-muted`   | Incorrect answer background (light)   | `#FEF2F2` |
+| `--color-warning`        | Quota, warnings                       | `#D97706` |
+| `--color-warning-muted`  | Warning background (light)            | `#FFFBEB` |
+| `--color-focus`          | Keyboard focus ring                   | `#0F62FE` |
 
 ### Dark theme
 
-| Token | Role | Hex |
-|---|---|---|
-| `--color-background` | Page background | `#0F0F0F` |
-| `--color-surface` | Elevated surfaces | `#1A1A1A` |
-| `--color-border` | Subtle dividers, input borders | `#2A2A2A` |
-| `--color-text-primary` | Body text, headings | `#FFFFFF` |
-| `--color-text-secondary` | Secondary text, captions | `#A1A1AA` |
-| `--color-text-tertiary` | Disabled, muted text | `#525252` |
-| `--color-accent` | Primary actions, links | `#3B82F6` |
-| `--color-accent-hover` | Pressed / hover state | `#2563EB` |
-| `--color-accent-muted` | Disabled primary action | `#4B4B4B` |
-| `--color-success` | Correct answers | `#22C55E` |
-| `--color-success-muted` | Correct answer background (dark) | `#064E2B` |
-| `--color-danger` | Incorrect answers, errors | `#EF4444` |
-| `--color-danger-muted` | Incorrect answer background (dark) | `#450A0A` |
-| `--color-warning` | Quota, warnings | `#F59E0B` |
-| `--color-warning-muted` | Warning background (dark) | `#452A03` |
-| `--color-focus` | Keyboard focus ring | `#3B82F6` |
+| Token                    | Role                               | Hex       |
+| ------------------------ | ---------------------------------- | --------- |
+| `--color-background`     | Page background                    | `#0F0F0F` |
+| `--color-surface`        | Elevated surfaces                  | `#1A1A1A` |
+| `--color-border`         | Subtle dividers, input borders     | `#2A2A2A` |
+| `--color-text-primary`   | Body text, headings                | `#FFFFFF` |
+| `--color-text-secondary` | Secondary text, captions           | `#A1A1AA` |
+| `--color-text-tertiary`  | Disabled, muted text               | `#525252` |
+| `--color-accent`         | Primary actions, links             | `#3B82F6` |
+| `--color-accent-hover`   | Pressed / hover state              | `#2563EB` |
+| `--color-accent-muted`   | Disabled primary action            | `#4B4B4B` |
+| `--color-success`        | Correct answers                    | `#22C55E` |
+| `--color-success-muted`  | Correct answer background (dark)   | `#064E2B` |
+| `--color-danger`         | Incorrect answers, errors          | `#EF4444` |
+| `--color-danger-muted`   | Incorrect answer background (dark) | `#450A0A` |
+| `--color-warning`        | Quota, warnings                    | `#F59E0B` |
+| `--color-warning-muted`  | Warning background (dark)          | `#452A03` |
+| `--color-focus`          | Keyboard focus ring                | `#3B82F6` |
 
 ### Semantic colour usage
+
 - **Accent:** Primary buttons, active tab, links, selected MCQ option ring.
 - **Success:** Correct answer highlight, "correct" checkmark, completion confetti substitute (subtle).
 - **Danger:** Incorrect answer highlight, error messages, delete actions.
@@ -117,18 +118,18 @@ Colours are defined as semantic CSS custom properties. Light and dark themes swa
 
 ## 6. Typography
 
-| Role | Font | Size | Weight | Line height | Use |
-|---|---|---|---|---|---|
-| Display (logo only) | Inter | 28–40 px | 500 | 1.2 | Quizzle wordmark |
-| Heading 1 | Inter | 24 px | 600 | 1.25 | Page titles |
-| Heading 2 | Inter | 20 px | 600 | 1.3 | Section titles |
-| Heading 3 | Inter | 18 px | 600 | 1.35 | Card/component titles |
-| Body large | Inter | 16 px | 400 | 1.5 | Primary body text |
-| Body | Inter | 14 px | 400 | 1.5 | Secondary body text |
-| Small | Inter | 12 px | 400 | 1.4 | Captions, helper text |
-| Label | Inter | 14 px | 500 | 1.4 | Form labels, button text |
-| Code / LaTeX inline | JetBrains Mono | 14 px | 400 | 1.5 | Inline math, code snippets |
-| LaTeX block | JetBrains Mono / KaTeX | 16 px | 400 | 1.6 | Display math equations |
+| Role                | Font                   | Size     | Weight | Line height | Use                        |
+| ------------------- | ---------------------- | -------- | ------ | ----------- | -------------------------- |
+| Display (logo only) | Inter                  | 28–40 px | 500    | 1.2         | Quizzle wordmark           |
+| Heading 1           | Inter                  | 24 px    | 600    | 1.25        | Page titles                |
+| Heading 2           | Inter                  | 20 px    | 600    | 1.3         | Section titles             |
+| Heading 3           | Inter                  | 18 px    | 600    | 1.35        | Card/component titles      |
+| Body large          | Inter                  | 16 px    | 400    | 1.5         | Primary body text          |
+| Body                | Inter                  | 14 px    | 400    | 1.5         | Secondary body text        |
+| Small               | Inter                  | 12 px    | 400    | 1.4         | Captions, helper text      |
+| Label               | Inter                  | 14 px    | 500    | 1.4         | Form labels, button text   |
+| Code / LaTeX inline | JetBrains Mono         | 14 px    | 400    | 1.5         | Inline math, code snippets |
+| LaTeX block         | JetBrains Mono / KaTeX | 16 px    | 400    | 1.6         | Display math equations     |
 
 - **Headings:** `Inter`, sans-serif.
 - **Body:** `Inter`, sans-serif, 16 px base.
@@ -139,17 +140,17 @@ Colours are defined as semantic CSS custom properties. Light and dark themes swa
 
 ## 7. Spacing scale
 
-| Token | Value | Use |
-|---|---|---|
-| `--space-1` | 4 px | Tight internal padding, hairline gaps |
-| `--space-2` | 8 px | Small component gaps, icon spacing |
-| `--space-3` | 12 px | Standard component padding |
-| `--space-4` | 16 px | Default section gap, input padding |
-| `--space-5` | 20 px | Larger section gap |
-| `--space-6` | 24 px | Card/content padding |
-| `--space-8` | 32 px | Major section separation |
-| `--space-10` | 40 px | Page-level padding |
-| `--space-12` | 48 px | Hero/home-screen vertical padding |
+| Token        | Value | Use                                   |
+| ------------ | ----- | ------------------------------------- |
+| `--space-1`  | 4 px  | Tight internal padding, hairline gaps |
+| `--space-2`  | 8 px  | Small component gaps, icon spacing    |
+| `--space-3`  | 12 px | Standard component padding            |
+| `--space-4`  | 16 px | Default section gap, input padding    |
+| `--space-5`  | 20 px | Larger section gap                    |
+| `--space-6`  | 24 px | Card/content padding                  |
+| `--space-8`  | 32 px | Major section separation              |
+| `--space-10` | 40 px | Page-level padding                    |
+| `--space-12` | 48 px | Hero/home-screen vertical padding     |
 
 All spacing uses multiples of 4 px. Components use `--space-3` to `--space-6` internally; pages use `--space-8` to `--space-12` between sections.
 
@@ -159,15 +160,16 @@ All spacing uses multiples of 4 px. Components use `--space-3` to `--space-6` in
 
 ### Breakpoints (balanced strategy)
 
-| Token | Min width | Target |
-|---|---|---|
-| `--bp-mobile` | 0 px | Phones (portrait/landscape) |
-| `--bp-tablet` | 768 px | Tablets, small laptops |
-| `--bp-desktop` | 1024 px | Desktops |
+| Token          | Min width | Target                      |
+| -------------- | --------- | --------------------------- |
+| `--bp-mobile`  | 0 px      | Phones (portrait/landscape) |
+| `--bp-tablet`  | 768 px    | Tablets, small laptops      |
+| `--bp-desktop` | 1024 px   | Desktops                    |
 
 Mobile and desktop are designed in parallel — no "mobile is secondary" assumptions. The centered single-column home screen is the same on both; only width and padding scale.
 
 ### Layout rules
+
 - **Max content width:** 720 px on desktop (centered). On mobile, full width with `--space-4` horizontal padding.
 - **Home screen:** Centered single column. Generation form occupies the center; no sidebars.
 - **Quiz screen:** Full-width on mobile; centered max-width column on desktop.
@@ -181,12 +183,12 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 
 ### 9.1 Button
 
-| Variant | Background | Text | Border | Use |
-|---|---|---|---|---|
-| Primary | `--color-accent` | White | None | Main actions (Generate, Submit, Save) |
-| Secondary | Transparent | `--color-text-primary` | `--color-border` | Tertiary actions (Cancel, Back) |
-| Danger | `--color-danger` | White | None | Destructive actions (Delete, Revoke) |
-| Ghost | Transparent | `--color-text-secondary` | None | Icon buttons, subtle actions |
+| Variant   | Background       | Text                     | Border           | Use                                   |
+| --------- | ---------------- | ------------------------ | ---------------- | ------------------------------------- |
+| Primary   | `--color-accent` | White                    | None             | Main actions (Generate, Submit, Save) |
+| Secondary | Transparent      | `--color-text-primary`   | `--color-border` | Tertiary actions (Cancel, Back)       |
+| Danger    | `--color-danger` | White                    | None             | Destructive actions (Delete, Revoke)  |
+| Ghost     | Transparent      | `--color-text-secondary` | None             | Icon buttons, subtle actions          |
 
 - Height: 44 px (touch-friendly minimum).
 - Border radius: 6 px (subtle, not pill-shaped).
@@ -196,16 +198,16 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 
 ### 9.2 Input
 
-| Part | Token | Value |
-|---|---|---|
-| Background | `--color-surface` | Light: `#F7F7F7` / Dark: `#1A1A1A` |
-| Border | `--color-border` | 1 px solid |
-| Border (focus) | `--color-focus` | 2 px solid |
-| Text | `--color-text-primary` | |
-| Placeholder | `--color-text-tertiary` | |
-| Height | — | 44 px |
-| Padding | `--space-3` horizontal | 12 px |
-| Border radius | — | 6 px |
+| Part           | Token                   | Value                              |
+| -------------- | ----------------------- | ---------------------------------- |
+| Background     | `--color-surface`       | Light: `#F7F7F7` / Dark: `#1A1A1A` |
+| Border         | `--color-border`        | 1 px solid                         |
+| Border (focus) | `--color-focus`         | 2 px solid                         |
+| Text           | `--color-text-primary`  |                                    |
+| Placeholder    | `--color-text-tertiary` |                                    |
+| Height         | —                       | 44 px                              |
+| Padding        | `--space-3` horizontal  | 12 px                              |
+| Border radius  | —                       | 6 px                               |
 
 - Text input, textarea, and select share the same height and border style.
 - Error state: border `--color-danger`, helper text `--color-danger`.
@@ -321,6 +323,7 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 ### 12.1 Sign-in (Google)
 
 **Hierarchy:**
+
 1. Quizzle wordmark (top-left or centered).
 2. Heading: "Sign in to Quizzle".
 3. Subtitle: "Continue with your Google account."
@@ -328,6 +331,7 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 5. Secondary: "Privacy policy · Terms of service" (small, bottom).
 
 **Behaviour:**
+
 - Single Google-only sign-in. No email/password, no social alternatives.
 - On success: redirect to Generate screen, set session cookie/token.
 - Error: inline message below button.
@@ -339,6 +343,7 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 ### 12.2 Main quiz-generation screen (home)
 
 **Hierarchy:**
+
 1. Tab bar (bottom mobile / top desktop): Generate (active), History, Share, Account.
 2. Quizzle wordmark.
 3. Heading: "Create a quiz".
@@ -368,11 +373,13 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 ### 12.3 Source upload and pasted-text input
 
 **Paste text:**
+
 - Textarea, 8–12 rows, placeholder "Paste your study material here…".
 - Character count (subtle, bottom-right).
 - Max ~50K characters enforced; warning near limit.
 
 **Upload file:**
+
 - Drop zone / button: "Choose PDF, DOCX, or TXT".
 - Accept: `.pdf`, `.docx`, `.txt`.
 - Max size: 5 MB.
@@ -380,17 +387,20 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 - Scanned PDF detection: warning inline if no extractable text.
 
 **Shared behaviour:**
+
 - One source per generation session. Switching source clears configuration.
 - Source treated as untrusted: no HTML rendering, sanitized before AI.
 
 ### 12.4 Generation progress and error handling
 
 **Progress:**
+
 - Step counter: "Generating question 3 of 10…" (subtle).
 - Spinner inside generate button.
 - No full-screen loader.
 
 **Error:**
+
 - Inline error below generate button: "Unable to generate quiz. Please try again." + "Try again" button.
 - Quota error: warning colour, "Daily generation limit reached." + "Try again tomorrow."
 - Network error: "Connection lost. Check your internet and retry."
@@ -400,6 +410,7 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 ### 12.5 Quiz-taking screen
 
 **Hierarchy:**
+
 1. Header: quiz title (optional), back arrow.
 2. Progress: "3 / 10" + optional progress bar.
 3. Timer (if enabled): compact MM:SS, top-right.
@@ -411,6 +422,7 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 7. Footer: none.
 
 **Behaviour:**
+
 - One question at a time. User must answer before Next enables (MCQ: select option; Theory: enter text).
 - Answer saved locally as user progresses.
 - On submit: attempt sent to server, score computed, redirect to results.
@@ -426,6 +438,7 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 ### 12.6 Quiz completion and answer review
 
 **Hierarchy:**
+
 1. Heading: "Quiz complete".
 2. Score: "8 / 10" (large), "80%" (subtle).
 3. Chips: "8 correct" (green), "2 incorrect" (red).
@@ -447,6 +460,7 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 ### 12.7 Saved quiz history
 
 **Hierarchy:**
+
 1. Heading: "History".
 2. Empty state (if none): "No saved quizzes yet." + "Create quiz" action.
 3. List of saved quizzes:
@@ -466,6 +480,7 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 ### 12.8 Shared quiz landing and attempt flow
 
 **Landing page (public, no auth required):**
+
 1. Heading: quiz title.
 2. Subtitle: "Shared by [owner]" + date.
 3. Description: source summary (not the source itself).
@@ -473,11 +488,13 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 5. Expiry notice (subtle): "This link expires on [date]."
 
 **Attempt flow:**
+
 - Same as quiz-taking screen (12.5), but no sign-in required.
 - Attempt recorded anonymously or linked if user signs in mid-attempt.
 - Score shown at end; no save to history unless user signs in.
 
 **Expiry/revocation:**
+
 - Expired link: "This quiz link has expired." no attempt button.
 - Revoked link: "This quiz is no longer available."
 
@@ -488,6 +505,7 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 ### 12.9 Account, privacy and retention settings
 
 **Hierarchy:**
+
 1. Heading: "Account".
 2. User info: email, display name (from Google).
 3. Theme: Light / Dark / System (segmented control). (Theme toggle lives here, not header.)
@@ -528,9 +546,15 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 
 ## 15. Approval gate
 
+**Status:** APPROVED with conditions (owner, 2026-10-22). Implemented in Phase 3.
+
+**Condition 1 (WCAG AA contrast) — VERIFIED 2026-10-22, two deviations found.**
+See §16 for the full measurement table and the owner decision required.
+
 **Status:** APPROVED with conditions (owner, 2026-10-22). The design system is approved for implementation of a representative Generate-screen prototype only — not all nine screens.
 
 ### Owner approval conditions
+
 1. Keep the documented palette provisionally, but **verify WCAG AA contrast in light and dark themes before finalising the tokens**.
 2. Keep the tab order: **Generate, History, Share, Account**.
 3. Keep **one-question-at-a-time quiz navigation**, including Previous/Next controls and a **review step before final submission**.
@@ -538,12 +562,69 @@ All components are built with reusable tokens — no hardcoded colours, spacing,
 5. Ensure the specifications cover **quota exhaustion, generation failures, expired share links, deleted quizzes, and empty states**.
 
 ### Next step (prototype, not full implementation)
+
 Build a functional **Generate-screen prototype** using the design tokens, shown at mobile and desktop widths in both light and dark themes. Include document upload, pasted-text input, quiz type, difficulty, question count, and optional timer. Do not implement all nine screens yet. Let the owner review the representative prototype first.
 
 **Feedback requested on the prototype:**
+
 - Does the Generate screen match the approved minimal direction?
 - Are the design tokens usable and consistent?
 - Any WCAG contrast concerns in light or dark themes?
 - Is the mobile/desktop responsive behaviour correct?
 
 Record prototype feedback in `DESIGN_BRIEF.md` §15 and `CHANGELOG.md` before expanding the design system across the application.
+
+---
+
+## 16. WCAG AA contrast verification (condition 1)
+
+Measured programmatically from the implemented tokens on 2026-10-22 by
+`theme/__tests__/contrast.test.ts`. Ratios are WCAG 2.1 relative-luminance based.
+
+Thresholds: normal text 4.5:1 (1.4.3); large text and UI components 3:1 (1.4.11);
+disabled/inactive controls are exempt from 1.4.3.
+
+| Token pair                        | Light      | Dark       | Required  | Result                 |
+| --------------------------------- | ---------- | ---------- | --------- | ---------------------- |
+| `textPrimary` / `background`      | 17.40:1    | 19.17:1    | 4.5:1     | PASS                   |
+| `textSecondary` / `background`    | 5.74:1     | 7.48:1     | 4.5:1     | PASS                   |
+| `textSecondary` / `surface`       | pass       | pass       | 4.5:1     | PASS                   |
+| `accent` / `background`           | 5.00:1     | 5.21:1     | 3:1       | PASS                   |
+| `focus` / `background`            | pass       | pass       | 3:1       | PASS                   |
+| `success` / `successMuted`        | 3.12:1     | 4.32:1     | 3:1       | PASS                   |
+| `danger` / `dangerMuted`          | 4.41:1     | 4.29:1     | 3:1       | PASS                   |
+| `warning` / `warningMuted`        | 3.07:1     | 6.17:1     | 3:1       | PASS                   |
+| **`border` / `surface`**          | **1.18:1** | **1.21:1** | **3:1**   | **FAIL**               |
+| **`textTertiary` / `background`** | **2.85:1** | **2.45:1** | **4.5:1** | **FAIL (conditional)** |
+
+### Deviation A — `border` (both themes)
+
+WCAG 1.4.11 requires 3:1 for visual boundaries that identify a UI component.
+This applies here because §9.2 specifies that input state is "communicated via
+border colour only" — the border is the sole affordance identifying the field.
+
+Options (computed; **not applied** — requires owner approval):
+
+| Option     | Light     | Dark      | Ratio         | Trade-off                              |
+| ---------- | --------- | --------- | ------------- | -------------------------------------- |
+| Keep as-is | `#E5E5E5` | `#2A2A2A` | 1.18 / 1.21:1 | Preserves the airy look; non-compliant |
+| Change     | `#8F8F8F` | `#666666` | 3.02 / 3.03:1 | Compliant; visibly heavier borders     |
+
+### Deviation B — `textTertiary` (both themes)
+
+Exempt from 1.4.3 **only** when used for disabled/inactive controls, which is how
+§5 documents it ("Disabled, muted text"). However §9.2 also assigns this token to
+input **placeholder** text, which is **not** exempt.
+
+Options:
+
+- Restrict `textTertiary` to disabled controls only and give placeholder text a
+  compliant colour (e.g. `#767676` → 4.54:1 on white); **or**
+- Raise `textTertiary` itself to a compliant mid-grey.
+
+### Current handling
+
+Both deviations are **pinned by tests** at their measured values: the suite stays
+green and auditable, the shortfall is visible in CI output, and any palette change
+immediately fails the test and forces a review. The approved palette was **not**
+changed unilaterally.
