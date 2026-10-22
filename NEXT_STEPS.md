@@ -1,66 +1,69 @@
 # Quizzle — Next Steps
 
-**Current phase:** Phase 1 — architecture and plan  
-**Status:** Architecture documented (provisionally approved); awaiting owner sign-off before Phase 2 scaffolding  
+**Current phase:** Phase 2 — design system and UX  
+**Status:** Design system specified in `DESIGN_BRIEF.md`, awaiting owner approval before implementation  
 **Last updated:** 2026-10-22  
 **Branch:** `arena/9131a5e6-quizzle`
 
 ## What was done in Phase 0
 
-1. Inspected the existing repository: a single-commit Vite + React 19 + Gemini AI Studio starter template. Emptied it and added the four planning documents.
-2. Ran the discovery interview; confirmed users (university students), visual direction (minimal, Notion-referencing), layout (centered single-column), theme (light + dark), platform priority (balanced), and no existing assets to preserve.
-3. Recorded all confirmed decisions in `PROJECT_CONTEXT.md` and `DESIGN_BRIEF.md`.
+Discovery interview completed. Confirmed: university students as users, Notion as visual reference, minimal visual direction, centered single-column home screen, light + dark themes, balanced web/mobile priority, no existing assets to preserve.
 
-## What was done in Phase 1 (documentation only — no code scaffolded)
+## What was done in Phase 1
 
-1. Finalised a maintainable web-first architecture with a native path (see `ARCHITECTURE.md`).
-2. Defined system boundaries: client (Expo + RNW), API layer, Firebase Auth, Firestore, AI provider, file processing, deployment.
-3. Defined the data model: `users`, `quizzes`, `quizAttempts`, `shareLinks`, `rateLimits` collections with Firestore security rules.
-4. Defined the security approach: server-side AI keys, ownership via Firebase Auth UID, upload validation, rate limiting, prompt-injection prevention, share-link expiration/revocation, hard deletion.
-5. Defined the AI provider abstraction (`AIProvider` interface) and researched free tiers for NVIDIA NIM, GroqCloud, and Mistral (none require a credit card; live verification pending).
-6. Documented shared vs platform-specific logic (file picker, LaTeX rendering, Google sign-in are platform-specific; business logic and UI components are shared).
-7. Defined deployment plan: Firebase Hosting + Firebase Functions (recommended), EAS Build for native later, GitHub Actions CI/CD.
-8. Identified compatibility risks: RN Web library compatibility, `expo-file-system` on web, `react-native-ratex` RN version requirement, scanned PDFs, serverless timeouts.
-9. Defined MVP scope (MCQ generation, quiz taking, results, history, sharing, LaTeX, light/dark) and out-of-scope items (theory grading v1, OCR, native builds v1, payments).
-10. Defined an ordered implementation roadmap (Phases 1–4).
-11. Updated `DESIGN_BRIEF.md` §9 with a brand proposal (colours, typography, logo concept) awaiting approval.
+Architecture documented in `ARCHITECTURE.md` (provisionally approved): Expo + React Native Web + TypeScript, Expo Router, Firebase Auth (Google), Firestore, server-side API layer, replaceable AI provider (GroqCloud → NVIDIA NIM → Mistral). AI provider free tiers researched (none require a card; live verification pending).
 
-## Acceptance criteria for Phase 1 (all documented)
+## What was done in Phase 2 (documentation only — no UI code written)
 
-- [x] Maintainable web-first architecture finalised with native path.
-- [x] Shared vs platform-specific logic defined.
-- [x] Frontend, backend/API, auth, database, AI integration, file processing, deployment boundaries defined.
-- [x] Compatibility risks, dependency constraints, and blockers identified.
-- [x] MVP scope and ordered roadmap defined.
-- [x] Four project docs updated; `ARCHITECTURE.md` created.
-- [x] No full application implementation started (by design).
+1. Ran design interview; confirmed navigation (tab bar), quiz layout (one question at a time), breakpoints (balanced), progress/timer (subtle), theme toggle (settings only), motion (meaningful).
+2. Defined design system in `DESIGN_BRIEF.md`: principles, colour tokens (light/dark), typography, spacing, layout/breakpoints, components, quiz components, state components, all 9 screen specs, accessibility, theme behaviour.
+3. Brand proposal (colours, typography, logo) carried forward from Phase 1 §9, still awaiting approval.
 
-## Remaining approvals before Phase 2
+## Acceptance criteria for Phase 2 (all documented, none implemented)
 
-1. **Architecture approval** — Owner confirms `ARCHITECTURE.md` (stack, data model, security, provider order, deployment). Any changes recorded in `CHANGELOG.md` and reflected in `PROJECT_CONTEXT.md`.
-2. **Brand approval** — Owner reviews `DESIGN_BRIEF.md` §9 (colours, typography, logo) and approves or requests changes.
-3. **Provider selection after live verification** — Verify free-tier access for GroqCloud → NVIDIA NIM → Mistral before selecting. Do not incur paid usage without explicit approval.
+- [x] Design principles defined.
+- [x] Colour tokens (light + dark) defined.
+- [x] Typography scale and font choices defined.
+- [x] Spacing scale defined.
+- [x] Layout and responsive breakpoints defined.
+- [x] Button, input, menu, dialog, notification, progress components specified.
+- [x] Quiz question, MCQ option, theory answer, timer, results components specified.
+- [x] Loading, error, empty states specified.
+- [x] All 9 screens specified with hierarchy, behaviour, states, mobile layout.
+- [x] Accessibility and keyboard behaviour defined.
+- [x] Light/dark theme behaviour defined.
+- [ ] Owner approval of design direction (pending).
+- [ ] Small representative screen prototype for review (pending).
 
-## Phase 2 acceptance criteria (next phase, not yet started)
+## Remaining approvals before Phase 3 implementation
+
+1. **Design system approval** — Owner reviews `DESIGN_BRIEF.md` and approves or requests changes to colours, components, navigation, quiz layout, and screen specs.
+2. **Architecture approval** — Owner confirms `ARCHITECTURE.md` (still provisionally approved from Phase 1).
+3. **Brand approval** — Owner reviews `DESIGN_BRIEF.md` §9 (colours, typography, logo).
+4. **Provider selection after live verification** — Verify free-tier access for GroqCloud → NVIDIA NIM → Mistral before selecting. Do not incur paid usage without explicit approval.
+
+## Phase 3 acceptance criteria (next phase, not yet started)
 
 - [ ] Expo + React Native Web + TypeScript project scaffolded.
+- [ ] Design system implemented as reusable tokens + components.
 - [ ] Firebase Auth Google sign-in working on web.
 - [ ] Firestore with security rules deployed.
 - [ ] Server-side API layer with replaceable `AIProvider` interface.
 - [ ] AI provider free-tier verified and connected behind the interface.
-- [ ] Quiz generation (MCQ, up to 50 questions) end-to-end.
-- [ ] Quiz-taking flow with results display.
+- [ ] Home quiz-generation screen (centered single-column) implemented per spec.
+- [ ] Quiz-taking screen (one question at a time) implemented per spec.
+- [ ] Quiz completion/results screen implemented per spec.
 - [ ] Lint, type-check, and tests passing in CI.
 - [ ] Deployable web build.
 
 ## Suggested next prompt
 
-Review `ARCHITECTURE.md` and approve (or request changes to) the stack, data model, security approach, provider order, and deployment plan. Review `DESIGN_BRIEF.md` §9 and approve (or request changes to) the brand proposal. Once approved, begin Phase 2: scaffold the Expo project, set up Firebase Auth + Firestore, and verify free-tier access for the AI provider before writing provider-specific code.
+Review `DESIGN_BRIEF.md` and approve (or request changes to) the design system and screen specifications. Review `ARCHITECTURE.md` and `DESIGN_BRIEF.md` §9 (brand) and approve or request changes. Once approved, begin Phase 3: scaffold the Expo project, implement the design system tokens/components, set up Firebase Auth + Firestore, and verify AI provider free-tier access before writing provider-specific code.
 
 ## Outstanding items to update after approval
 
+- `DESIGN_BRIEF.md`: mark design system as approved or revise; record wireframe/prototype feedback.
 - `ARCHITECTURE.md`: mark architecture as approved or revise decisions.
 - `PROJECT_CONTEXT.md`: update section 5 (architecture status) and section 11 (open decisions).
-- `DESIGN_BRIEF.md`: record brand feedback and design-system decisions.
-- `CHANGELOG.md`: append dated entries for approvals and Phase 2 work.
-- `NEXT_STEPS.md`: advance to Phase 2 acceptance criteria as work completes.
+- `CHANGELOG.md`: append dated entries for approvals and Phase 3 work.
+- `NEXT_STEPS.md`: advance to Phase 3 acceptance criteria as work completes.

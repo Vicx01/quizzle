@@ -70,6 +70,34 @@ This file is append-only in spirit: add dated entries; do not erase earlier hist
 - Brand colours/typography/logo await owner approval.
 
 
+## 2026-10-22 — Phase 2 design system specified
+
+### Design decisions captured (Phase 2 interview)
+- Navigation model: persistent tab bar (Generate, History, Share, Account).
+- Quiz-taking layout: one question at a time, paginated.
+- Responsive strategy: balanced — mobile and desktop equal priorities.
+- Progress/timer prominence: subtle (step counter + compact timer).
+- Theme toggle location: Settings only (account screen).
+- Motion: meaningful — purposeful transitions for progress and answer feedback.
+
+### Design system documented in `DESIGN_BRIEF.md`
+- Design principles (content first, progressive disclosure, typographic hierarchy, generous whitespace, restrained colour, predictable interactions, accessibility by design, meaningful motion).
+- Colour tokens: light and dark themes, semantic roles (background, surface, border, text-primary/secondary/tertiary, accent, success, danger, warning, focus).
+- Typography: Inter (headings/body), JetBrains Mono (code/LaTeX), size and weight scale.
+- Spacing scale: 4 px base, multiples of 4 px.
+- Layout and breakpoints: mobile 0 / tablet 768 px / desktop 1024 px; max content width 720 px.
+- Components: button (primary/secondary/danger/ghost), input, select/menu, dialog, notification/toast, progress indicator.
+- Quiz components: question, MCQ option, theory answer, timer, results.
+- State components: loading, error, empty.
+- Screen specifications: sign-in, home generation, source upload/paste, generation progress/error, quiz-taking, completion/results, history, shared-quiz landing/attempt, account/settings.
+- Accessibility and keyboard behaviour; theme behaviour (light/dark/system).
+
+### Approval gate
+- Design system is proposed, NOT approved for implementation. No UI code written.
+- Owner feedback requested on colour palette, tab bar labels/order, quiz layout, theme toggle placement, and any missing screens.
+
+
+
 
 ### Established from the project brief
 - Quizzle is an AI quiz-generation/study application.
