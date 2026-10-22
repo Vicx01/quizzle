@@ -82,7 +82,58 @@ Do not implement all screens until the owner has reviewed a wireframe, prototype
 
 ## 8. Open questions (design)
 
-- Exact brand colours, typography, and logo treatment.
 - Quiz screen layout and question navigation detail.
 - Motion preferences and specific accessibility requirements beyond the baseline.
 - Responsive breakpoint targets for web vs mobile.
+
+## 9. Brand proposal (awaiting owner approval)
+
+**Proposed identity:** a distinctive, minimal Quizzle brand inspired by Notion's clarity — spacious, typography-led, restrained colour, trustworthy for university study.
+
+### Colour palette (light theme)
+| Token | Role | Hex (proposed) |
+|---|---|---|
+| `--color-background` | Page background | `#FFFFFF` |
+| `--color-surface` | Elevated surfaces (cards, inputs) | `#F7F7F7` |
+| `--color-border` | Subtle dividers | `#E5E5E5` |
+| `--color-text-primary` | Body text | `#1A1A1A` |
+| `--color-text-secondary` | Secondary text, captions | `#666666` |
+| `--color-accent` | Primary actions, links | `#0F62FE` (blue) |
+| `--color-accent-hover` | Pressed/hover state | `#0D55E8` |
+| `--color-success` | Correct answers | `#16A34A` (green) |
+| `--color-danger` | Incorrect answers | `#DC2626` (red) |
+| `--color-warning` | Quota/errors | `#D97706` (amber) |
+
+### Colour palette (dark theme)
+| Token | Role | Hex (proposed) |
+|---|---|---|
+| `--color-background` | Page background | `#0F0F0F` |
+| `--color-surface` | Elevated surfaces | `#1A1A1A` |
+| `--color-border` | Subtle dividers | `#2A2A2A` |
+| `--color-text-primary` | Body text | `#FFFFFF` |
+| `--color-text-secondary` | Secondary text, captions | `#A1A1AA` |
+| `--color-accent` | Primary actions, links | `#3B82F6` (lighter blue for dark) |
+| `--color-accent-hover` | Pressed/hover state | `#2563EB` |
+| `--color-success` | Correct answers | `#22C55E` |
+| `--color-danger` | Incorrect answers | `#EF4444` |
+| `--color-warning` | Quota/errors | `#F59E0B` |
+
+### Typography (proposed)
+- **Headings:** `Inter` (sans-serif) — clean, legible, neutral.
+- **Body:** `Inter` (sans-serif) — 16 px base, 1.5 line height.
+- **Code / LaTeX inline:** `JetBrains Mono` or `IBM Plex Mono` — monospaced for math and technical notation.
+- **Display (optional brand wordmark):** A single refined serif or a tightly tracked sans-serif for the Quizzle logo only.
+
+### Logo concept (proposed)
+A minimal wordmark: "quizzle" in lowercase Inter, letter-spaced, with a single accent dot or notch replacing the dot of the "i" to suggest a question mark without being literal. No mascot, no generic graduation-cap icon, no gradient. Works at 24 px (favicon) and 200 px (marketing). One colour (accent blue) on white; reversed (white) on dark.
+
+### Anti-patterns confirmed (from Phase 0)
+- No default purple/blue gradients.
+- No decorative dashboards or invented statistics.
+- No wrapping every item in a card.
+- No unnecessary sidebars or navigation.
+- No excessive shadows, glass effects, or animation.
+- No generic AI illustrations or arbitrary icon decoration.
+
+### Approval gate
+Do not implement the visual system (tokens, components, theme) until the owner reviews and approves this brand proposal. Record feedback in `DESIGN_BRIEF.md` §9 and `CHANGELOG.md`.

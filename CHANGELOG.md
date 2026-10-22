@@ -44,11 +44,31 @@ This file is append-only in spirit: add dated entries; do not erase earlier hist
 ### Failed approaches
 - None recorded yet.
 
+## 2026-10-22 — Phase 1 architecture documented
+
+### Architecture (provisionally approved, awaiting owner sign-off)
+- Expo + React Native + React Native Web + TypeScript; Expo Router; Firebase Auth (Google sign-in); Firestore; server-side API layer (Firebase Functions recommended); Firebase Hosting/Vercel for web; EAS Build for native later.
+- Full decision record (selected options, why, alternatives, limitations): `ARCHITECTURE.md`.
+
+### AI provider research (as of 2026-10-22, live access NOT verified)
+- NVIDIA NIM: no card; ~1,000 credits signup; 40 RPM; 10K RPD; OpenAI-compatible at `integrate.api.nvidia.com/v1`; phone verification sometimes; production not covered by free key.
+- GroqCloud: no card; 30 RPM; 14,400 RPD (small models); 1K RPD (larger); OpenAI-compatible at `api.groq.com/v1`; org-level rate limits.
+- Mistral: no card (phone only); low RPM (~1–2); ~1B tokens/month (unpublished); OpenAI-compatible at `api.mistral.ai/v1`; free mode may train on data unless opted out.
+
+### Retention policy
+- Approved per owner direction: source discarded after generation; quiz history 30 days; share links 30 days revocable; 90-day inactive cleanup deferred pending definition/warnings/recovery safeguards.
+
+### Brand proposal
+- Added to `DESIGN_BRIEF.md` §9: minimal Notion-inspired identity, light/dark colour tokens, Inter typography, monospace for LaTeX, lowercase wordmark logo concept. Awaiting owner approval.
+
+### Validation pending (commands not yet run)
+- `npx create-expo-app` scaffold check; dependency install; Firebase project setup; provider sign-up + test calls (GroqCloud → NVIDIA NIM → Mistral); PDF/DOCX extraction test; LaTeX rendering test (KaTeX web / react-native-ratex native); Google sign-in web + native test.
+
 ### Known blockers
-- Architecture not yet approved.
-- AI provider access and quotas not verified.
-- Retention policy needs owner approval.
-- Brand colours/typography/logo guidance needed.
+- Owner approval of `ARCHITECTURE.md` and `DESIGN_BRIEF.md` §9 required before Phase 2 scaffolding.
+- AI provider free-tier access not verified against live accounts.
+- Brand colours/typography/logo await owner approval.
+
 
 
 ### Established from the project brief

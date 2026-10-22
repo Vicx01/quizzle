@@ -1,6 +1,6 @@
 # Quizzle — Project Context
 
-**Status:** Phase 0 discovery complete. No implementation work is verified.  
+**Status:** Phase 1 — architecture proposed, awaiting owner approval. No implementation work is verified.  
 **Last updated:** 2026-10-22  
 **Branch:** `arena/9131a5e6-quizzle`
 
@@ -22,7 +22,7 @@ These were answered by the owner and are treated as confirmed, not assumed:
 | Theme | Both light and dark (user-toggleable) |
 | Platform priority | Balanced — web and mobile equally |
 | Existing Quizzle assets to preserve | None — start completely fresh |
-| Brand colours / typography / logo | None yet — guidance needed |
+| Brand colours / typography / logo | None yet — proposal in DESIGN_BRIEF.md §9, awaiting approval |
 
 ## 3. Established product requirements (unchanged)
 
@@ -45,35 +45,46 @@ These were answered by the owner and are treated as confirmed, not assumed:
 
 Question quality, answer correctness, and source coverage take priority over generating the maximum number of questions.
 
-## 4. AI provider candidates (UNVERIFIED)
+## 4. AI provider candidates (research gathered, live access NOT yet verified)
 
-Evaluate in this order, without assuming current access or limits:
+Evaluate in this order. All three permit free access without a credit card, but live registration, quotas, and model availability must be verified against actual accounts before selection. **Never enable paid usage without explicit owner approval.**
 
-1. NVIDIA NIM.
-2. GroqCloud.
-3. mistral as an optional fallback.
+| Provider | Sign-up | Card required? | Published free limits | Endpoint (OpenAI-compatible) | Notes |
+|---|---|---|---|---|---|
+| NVIDIA NIM | build.nvidia.com (Developer Program) | No | ~1,000 credits signup; 40 RPM; 10K RPD | `integrate.api.nvidia.com/v1` | Phone verification sometimes; production not covered by free key; per-model deprecation dates posted |
+| GroqCloud | console.groq.com (email) | No | 30 RPM; 14,400 RPD (small models); 1K RPD (larger) | `api.groq.com/v1` | Rate limits at org level; adding card (zero spend) raises limits 10x |
+| Mistral | console.mistral.ai | No (phone only) | Low RPM (~1–2); ~1B tokens/month (unpublished) | `api.mistral.ai/v1` | Free mode may train on data unless opted out; must activate Studio billing section |
 
-Verify account requirements, whether payment-card verification is required, available models, current free quotas, context/output limits, structured-output support, privacy terms, and availability in the owner's region. Do not silently switch to a paid provider or paid usage. Never enable paid usage without explicit owner approval.
+Keep provider-specific logic replaceable behind an `AIProvider` interface so the AI provider can be swapped without rewriting the app.
 
-Keep provider-specific logic replaceable behind an interface so the AI provider can be swapped without rewriting the app.
+## 5. Architecture — PROVISIONALLY APPROVED, pending validation
 
-## 5. Proposed architecture — NOT YET APPROVED
+**Selected stack:**
+- Expo + React Native + React Native Web + TypeScript
+- Expo Router for navigation
+- Firebase Authentication with Google sign-in
+- Firestore for quiz definitions, attempts, ownership, sharing, and metadata
+- Server-side API layer (Firebase Functions recommended; Railway/Render alternative) for AI calls and privileged operations
+- Firebase Hosting or Vercel for web deployment
+- EAS Build for native builds (later)
 
-Evaluate rather than blindly adopt:
+**Why this stack:** Single codebase targets web and native (balanced platform priority); Firebase Auth gives Google-only sign-in on web and native; Firestore integrates with Auth security rules; server-side API layer keeps AI keys off the client; Firebase free tier covers MVP without a card.
 
-- Expo + React Native + React Native Web + TypeScript.
-- Expo Router for navigation.
-- Firebase Authentication with Google sign-in.
-- Firestore for quiz definitions, attempts, ownership, sharing, and metadata.
-- A server-side API layer for AI calls and privileged operations.
-- Web deployment on an appropriate hosting provider, with a path to native builds.
+**Alternatives considered:**
+- Vite + React 19 (previous starter): web-only, no native path — rejected.
+- Next.js: web-only — rejected.
+- Flutter / Swift + Kotlin: separate codebases — rejected.
+- PostgreSQL + custom API: more infrastructure to run — rejected for MVP.
+- Supabase: viable alternative but adds another provider — noted, not selected.
 
-The owner's "balanced" platform priority (web and mobile equally) is compatible with Expo + React Native Web, but the following must still be checked before committing:
-- Document upload/extraction (PDF, DOCX, TXT) on web and native.
-- LaTeX/mathematical notation rendering compatibility.
-- Firebase Auth Google sign-in on web and native.
-- Firestore offline behaviour and sharing links.
-- Server-side API layer hosting and deployment target.
+**Known limitations (must be validated before full commitment):**
+- Document upload/extraction (PDF, DOCX, TXT) on web and native — `expo-document-picker` works on both but returns different types (`File` on web, `uri` on native); server-side extraction recommended for consistency.
+- LaTeX rendering — KaTeX on web; `react-native-ratex` (RaTeX) on native. `react-native-ratex` requires React Native ≥ 0.84 / New Architecture — verify Expo SDK compatibility.
+- Firebase Auth Google sign-in on web and native — separate OAuth client IDs needed in Google Cloud Console.
+- Firestore offline behaviour and sharing links — test on both platforms.
+- Serverless function timeouts on long AI generations — enforce timeouts and retry/backoff.
+
+Full decision record (selected option, why, alternatives, limitations) is in `ARCHITECTURE.md`.
 
 ## 6. Security and privacy requirements
 
@@ -86,19 +97,22 @@ The owner's "balanced" platform priority (web and mobile equally) is compatible 
 - Avoid retaining full source documents unless an approved feature requires it.
 - Implement actual deletion and expiry mechanisms; do not merely hide expired records.
 - Do not log sensitive source content unnecessarily.
+- Prevent document instructions from overriding system-level quiz-generation requirements (system prompt separate from user content; delimiter markers).
 
-## 7. Proposed retention defaults — NEED OWNER APPROVAL
+## 7. Retention policy — APPROVED (per owner direction)
 
 - Uploaded source material: temporary processing; discard after generation by default.
 - Saved quiz history: 30 days.
 - Share links: 30 days, revocable earlier.
-- Inactive-user cleanup: consider deletion after 90 days of inactivity, subject to owner approval and applicable requirements.
+- Inactive-user cleanup: NOT implemented for initial release. Deletion after 90 days of inactivity is deferred until the inactivity definition, user warning process, and recovery safeguards are documented and approved.
 
 Clarify what happens to attempts and shares when a quiz or account is deleted.
 
 ## 8. Design approach
 
 Do not generate a generic AI-looking interface by default. Confirmed direction: minimal, Notion-referencing, centered single-column home screen, both light and dark themes, balanced web/mobile.
+
+Brand proposal (colours, typography, logo concept) is in `DESIGN_BRIEF.md` §9 and awaits owner approval before implementation.
 
 Do not finalise the design system or build all screens until the owner approves the design direction and architecture. See `DESIGN_BRIEF.md`.
 
@@ -113,14 +127,13 @@ Do not finalise the design system or build all screens until the owner approves 
 
 ## 10. Current state
 
-Repository inspected and reset on `arena/9131a5e6-quizzle`. Starter-template Vite/React/Gemini app removed. Four planning documents present. Phase 0 discovery complete.
+Repository inspected and reset on `arena/9131a5e6-quizzle`. Starter-template Vite/React/Gemini app removed. Four planning documents plus `ARCHITECTURE.md` present. Phase 0 discovery complete. Phase 1 architecture documented and provisionally approved.
 
 ## 11. Key open decisions
 
-- Final architecture and hosting choice (Expo + Firebase proposal not yet approved).
-- AI provider and verified free access (NIM / GroqCloud / mistral not yet verified).
-- File size, text length, generation frequency, and storage quotas.
-- Final retention policy (owner approval needed).
-- Theory-question grading approach.
-- Whether OCR for scanned PDFs is in scope.
-- Brand colours, typography, and logo (guidance requested by owner).
+- Final owner approval of `ARCHITECTURE.md` (stack, data model, security, provider order, deployment).
+- AI provider selection after live free-tier verification (NVIDIA NIM / GroqCloud / Mistral).
+- File size, text length, generation frequency, and storage quotas (not yet finalised).
+- Theory-question grading approach: AI-assisted grading against a transparent rubric, with review/self-assessment option (approved in principle; details in Phase 3).
+- OCR for scanned PDFs: out of scope for initial release; detect and report limitation.
+- Brand colours, typography, and logo: proposal in DESIGN_BRIEF.md §9, awaiting approval.
