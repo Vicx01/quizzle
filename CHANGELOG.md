@@ -1060,3 +1060,80 @@ Removing the public read path means **sharing does not function at all yet**.
 Still needed: build the server API to the contract; grade server-side; verify
 the rules on the official emulator and deploy. Listed in NEXT_STEPS.md under
 "Remaining work before shared quizzes can be safe".
+
+## 2026-10-23 — Supabase migration Phase 1: database foundation (COMPLETE)
+
+Scope: **schema only.** No application code was modified, Firebase
+authentication is untouched and still working, no Supabase project has been
+created, and nothing has been deployed.
+
+### Added
+
+- `supabase/migrations/20261023000001_core_schema.sql` — nine tables
+  (`profiles`, `quizzes`, `questions`, `question_answer_keys`, `share_links`,
+  `quiz_attempts`, `attempt_answers`, `usage_counters`, `generation_log`) with
+  UUID keys, foreign keys, CHECK constraints and indexes. Enums mirror
+  `types/index.ts`; the <= 50 question product rule is a CHECK constraint.
+- `supabase/migrations/20261023000002_rls_policies.sql` — RLS enabled on all
+  nine tables, with least-privilege policies scoped to named roles.
+- `supabase/migrations/20261023000003_retention.sql` — the purge-eligibility
+  view and the documented source-document lifecycle.
+- `supabase/migrations/20261023000004_share_resolution.sql` —
+  `resolve_share_link()` and `record_share_access()`, callable by
+  `service_role` only.
+- `supabase/migrations/20261023000005_soft_delete.sql` — `soft_delete_quiz()`.
+- `tests/database/harness.mjs` — applies the migrations to PGlite (real
+  PostgreSQL compiled to WebAssembly) and emulates Supabase's roles, `auth`
+  schema, JWT claims and default privileges.
+- `tests/database/rls.test.mjs` and `tests/database/schema.test.mjs` — 74
+  executed tests covering all eight required security behaviours.
+- `docs/SUPABASE_SETUP.md` — project creation, migration workflow, RLS
+  verification, Google OAuth (for the next phase), environment separation.
+
+### Modified
+
+- `package.json` — added the `test:db` script and the `@electric-sql/pglite`
+  dev dependency.
+- `jest.config.js` — added `tests/database/` to `testPathIgnorePatterns` so the
+  node:test suite can never be collected by Jest.
+- `docs/SUPABASE_MIGRATION.md` — §0 phase status, §5 schema, §6 RLS, §12
+  decisions, §13 phases, §14 files, all updated to reflect what was built.
+- `PROJECT_CONTEXT.md` — recorded the retention refinement (quiz history is
+  user-owned and is never auto-deleted) and added the database foundation to
+  the current state.
+- `NEXT_STEPS.md` — new current-status section and test results.
+
+### Design decisions worth recording
+
+- **Answer keys moved to their own table.** RLS cannot redact columns. If
+  `correct_answer` lived on `questions`, a single careless `select *` in the
+  future shared-quiz function would expose the entire answer key. Separating
+  the table makes that leak structurally impossible.
+- **Share tokens are stored as SHA-256 hashes**, never in the clear.
+- **Attempts are written only by server code.** Client-supplied scores are
+  never trusted, so clients get SELECT but no INSERT/UPDATE/DELETE.
+- **Soft delete needed a SECURITY DEFINER function.** PostgreSQL re-checks an
+  updated row against the table's SELECT policies, which forbids a plain
+  `update ... set deleted_at = now()`; `WITH CHECK` is not permitted on a
+  SELECT policy.
+
+### Bug found and fixed during implementation
+
+The first version of the soft-delete test failed with "new row violates
+row-level security policy". This was a genuine schema defect, not a test
+problem: the SELECT policy's `deleted_at is null` clause blocks the very update
+that performs a soft delete. Resolved with `public.soft_delete_quiz()`.
+
+### Test results (actual)
+
+- Database: **74 passed, 0 failed, 0 skipped** (`npm run test:db`).
+- Mutation-checked: six deliberate security regressions are all caught.
+- App: 149 passed, 14 suites (unchanged — no application code touched).
+- Typecheck clean; lint 0 errors and 7 pre-existing warnings; prettier clean.
+
+### Explicitly NOT done
+
+- No Supabase project exists; no credentials are present or required.
+- Nothing has been applied to or verified against hosted Supabase.
+- No document processing, no Storage bucket, no AI integration, no sharing or
+  grading endpoints, no authentication changes.

@@ -9,6 +9,34 @@ Local and remote are in sync.
 
 ---
 
+## 0. Phase 1 status — database foundation COMPLETE (2026-10-23)
+
+Phase 1 is implemented and verified. It is **schema-only**: no application code
+was changed, Firebase is untouched and still handles authentication, no
+migrations have been applied to any Supabase project, and nothing is deployed.
+
+| Deliverable                        | Location                                                  |
+| ---------------------------------- | --------------------------------------------------------- |
+| Schema, constraints, triggers      | `supabase/migrations/20261023000001_core_schema.sql`      |
+| RLS policies                       | `supabase/migrations/20261023000002_rls_policies.sql`     |
+| Retention eligibility              | `supabase/migrations/20261023000003_retention.sql`        |
+| Share resolution + access counting | `supabase/migrations/20261023000004_share_resolution.sql` |
+| Soft delete                        | `supabase/migrations/20261023000005_soft_delete.sql`      |
+| Executed security tests            | `tests/database/rls.test.mjs` (74 assertions)             |
+| Executed schema/retention tests    | `tests/database/schema.test.mjs`                          |
+| Test harness (Supabase emulation)  | `tests/database/harness.mjs`                              |
+| Setup guide                        | `docs/SUPABASE_SETUP.md`                                  |
+
+Run the database suite with `npm run test:db`. It needs no Docker, no local
+Supabase stack, no network and no credentials.
+
+**§5 and §6 below are the original proposal.** They were superseded by the
+implemented migrations in four ways — see "Changes from the original proposal"
+in §5. Where this document and `supabase/migrations/` disagree, the migrations
+are authoritative.
+
+---
+
 ## 1. Headline finding — there is almost nothing to migrate
 
 The most important result of the audit: **Firestore is completely unused.**
@@ -149,104 +177,49 @@ increments, quota accounting, AI calls — runs in **Edge Functions** using the
 
 ---
 
-## 5. Database schema (proposed)
+## 5. Database schema (IMPLEMENTED)
 
-Normalised, replacing the denormalised Firestore model. UUID primary keys,
-`timestamptz` throughout, foreign keys with `ON DELETE CASCADE`.
+Authoritative source: `supabase/migrations/`. Nine tables in `public`.
 
-```sql
--- Profiles: keyed by Supabase auth user id. Never duplicate email/name
--- that already lives in auth.users beyond what the UI needs.
-create table public.profiles (
-  id          uuid primary key references auth.users on delete cascade,
-  display_name text,
-  theme       text not null default 'system' check (theme in ('light','dark','system')),
-  created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now()
-);
+| Table                  | Purpose                                        | Owner-scoped           |
+| ---------------------- | ---------------------------------------------- | ---------------------- |
+| `profiles`             | App preferences per Supabase user              | self                   |
+| `quizzes`              | Quiz metadata, ownership, soft delete          | `owner_id`             |
+| `questions`            | Safe question content only — no answers        | via quiz               |
+| `question_answer_keys` | `correct_answer`, `explanation`                | via quiz               |
+| `share_links`          | Token **hash**, expiry, revocation, access cap | `created_by`           |
+| `quiz_attempts`        | One attempt; `user_id` nullable for anonymous  | `user_id` / quiz owner |
+| `attempt_answers`      | Per-question response + authoritative grading  | via attempt            |
+| `usage_counters`       | Quota accounting                               | **server-only**        |
+| `generation_log`       | Generation audit trail                         | **server-only**        |
 
-create table public.quizzes (
-  id            uuid primary key default gen_random_uuid(),
-  owner_id      uuid not null references auth.users on delete cascade,
-  title         text not null check (char_length(title) between 1 and 200),
-  format        text not null check (format in ('MCQ','theory','mixed')),
-  difficulty    text not null check (difficulty in ('Easy','Medium','Hard')),
-  question_count int not null check (question_count between 1 and 50),
-  timer_seconds int check (timer_seconds is null or timer_seconds > 0),
-  source_type   text not null check (source_type in ('text','pdf','docx','txt')),
-  source_meta   jsonb,          -- filename/size only. NOT extracted text (see §7)
-  deleted_at    timestamptz,
-  created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now()
-);
-create index quizzes_owner_created_idx on public.quizzes (owner_id, created_at desc);
+Enums mirror `types/index.ts` exactly (`MCQ|theory|mixed`,
+`Easy|Medium|Hard`, `text|pdf|docx|txt`), and the product rule of at most 50
+questions is a `CHECK`, not an application convention.
 
--- Questions split out. This is what makes hidden answers enforceable:
--- correct_answer lives in its own table with no anon/client SELECT policy.
-create table public.questions (
-  id            uuid primary key default gen_random_uuid(),
-  quiz_id       uuid not null references public.quizzes on delete cascade,
-  position      int  not null,
-  type          text not null check (type in ('MCQ','theory')),
-  prompt        text not null,
-  options       jsonb,            -- MCQ only
-  latex_blocks  jsonb,
-  correct_answer text,            -- NEVER exposed pre-submission
-  explanation   text,             -- NEVER exposed pre-submission
-  unique (quiz_id, position)
-);
-create index questions_quiz_idx on public.questions (quiz_id, position);
+### Changes from the original proposal
 
-create table public.attempts (
-  id             uuid primary key default gen_random_uuid(),
-  quiz_id        uuid not null references public.quizzes on delete cascade,
-  user_id        uuid references auth.users on delete cascade, -- null = anonymous share attempt
-  share_link_id  uuid references public.share_links on delete set null,
-  answers        jsonb not null,
-  score          int,
-  max_score      int,
-  time_spent_seconds int,
-  completed_at   timestamptz,
-  created_at     timestamptz not null default now()
-);
-create index attempts_quiz_idx  on public.attempts (quiz_id, created_at desc);
-create index attempts_user_idx  on public.attempts (user_id, created_at desc);
+1. **Answers moved to their own table.** The proposal kept `correct_answer`
+   and `explanation` on `questions`. They now live in `question_answer_keys`.
+   RLS cannot redact columns, so the future "take a shared quiz" function must
+   `select` a safe column list. Physically separating the answer key means a
+   careless `select *` in that function **cannot** leak it. The original design
+   was one sloppy query away from exposing the entire answer key.
+2. **Share tokens are stored as SHA-256 hashes**, never in the clear. A database
+   dump or an accidental log therefore yields no usable share URLs. The raw
+   token is returned once at creation and never persisted.
+3. **`attempts` split into `quiz_attempts` + `attempt_answers`.** Grading data
+   (`is_correct`, `points_awarded`, `feedback`) is per-question and must be
+   queryable, which a jsonb blob on the attempt does not allow.
+4. **Added `question_answer_keys`, `attempt_answers` and a `soft_delete_quiz`
+   function.** See §6 for why soft delete needed a function.
 
-create table public.share_links (
-  id           uuid primary key default gen_random_uuid(),
-  quiz_id      uuid not null references public.quizzes on delete cascade,
-  token        text not null unique,      -- high-entropy, server-generated
-  created_by   uuid not null references auth.users on delete cascade,
-  expires_at   timestamptz not null,
-  revoked_at   timestamptz,
-  access_count int not null default 0,
-  max_access   int,
-  created_at   timestamptz not null default now()
-);
-create index share_links_token_idx on public.share_links (token);
-create index share_links_quiz_idx  on public.share_links (quiz_id);
+### Source-document retention
 
--- Usage accounting. Clients have NO write access; only Edge Functions
--- increment these, so a user cannot reset their own quota.
-create table public.usage_counters (
-  user_id    uuid not null references auth.users on delete cascade,
-  window_key text not null,     -- e.g. '2026-10-23' or '2026-10'
-  scope      text not null,     -- 'day' | 'month'
-  generations int not null default 0,
-  updated_at timestamptz not null default now(),
-  primary key (user_id, scope, window_key)
-);
-
-create table public.generation_log (
-  id          uuid primary key default gen_random_uuid(),
-  user_id     uuid not null references auth.users on delete cascade,
-  quiz_id     uuid references public.quizzes on delete set null,
-  provider    text,             -- which AI provider served it
-  status      text not null,    -- 'succeeded' | 'failed'
-  error_code  text,
-  created_at  timestamptz not null default now()
-);
-```
+`quizzes.source_meta` stores at most filename, byte size and extracted-text
+length. Neither the document nor its extracted text is ever persisted, which
+satisfies the approved "process then discard" policy at the schema level. No
+Storage bucket is created.
 
 ### Data classification
 
@@ -263,51 +236,45 @@ create table public.generation_log (
 
 ---
 
-## 6. Row Level Security
+## 6. Row Level Security (IMPLEMENTED)
 
-RLS enabled on **every** table in `public`. Default posture: deny.
+Authoritative source: `supabase/migrations/20261023000002_rls_policies.sql`.
 
-```sql
-alter table public.profiles        enable row level security;
-alter table public.quizzes         enable row level security;
-alter table public.questions       enable row level security;
-alter table public.attempts        enable row level security;
-alter table public.share_links     enable row level security;
-alter table public.usage_counters  enable row level security;
-alter table public.generation_log  enable row level security;
+RLS is enabled on all nine tables. Every policy is scoped to a named role —
+never to `PUBLIC`, because `anon` and `authenticated` are both members of
+`PUBLIC` and a `PUBLIC` policy would silently widen access.
 
--- Profiles: self only.
-create policy profiles_self on public.profiles
-  for all using (auth.uid() = id) with check (auth.uid() = id);
+| Table                  | Client SELECT                            | Client INSERT/UPDATE/DELETE |
+| ---------------------- | ---------------------------------------- | --------------------------- |
+| `profiles`             | self                                     | self (no DELETE)            |
+| `quizzes`              | own, excluding soft-deleted              | own                         |
+| `questions`            | own quizzes                              | own quizzes                 |
+| `question_answer_keys` | own quizzes                              | own quizzes                 |
+| `share_links`          | creator only                             | **none**                    |
+| `quiz_attempts`        | own attempts, or attempts on own quizzes | **none**                    |
+| `attempt_answers`      | same as parent attempt                   | **none**                    |
+| `usage_counters`       | **none**                                 | **none**                    |
+| `generation_log`       | **none**                                 | **none**                    |
 
--- Quizzes: owner only. No public/shared SELECT path exists.
-create policy quizzes_owner on public.quizzes
-  for all using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+Three design points worth stating explicitly:
 
--- Questions: visible only to the quiz owner.
--- There is deliberately NO anon/shared policy. Answers are served by an
--- Edge Function, never read directly by a client.
-create policy questions_owner on public.questions
-  for all using (
-    exists (select 1 from public.quizzes q
-            where q.id = questions.quiz_id and q.owner_id = auth.uid())
-  );
-
--- Attempts: the author, or the quiz owner.
-create policy attempts_read on public.attempts
-  for select using (
-    auth.uid() = user_id
-    or exists (select 1 from public.quizzes q
-               where q.id = attempts.quiz_id and q.owner_id = auth.uid())
-  );
-create policy attempts_insert on public.attempts
-  for insert with check (auth.uid() = user_id);
-
--- Share links: nobody reads or writes these from the client.
--- (No policy at all = denied. An explicit policy is omitted by design.)
-
--- Usage counters and generation log: no client policies. Server-only.
-```
+- **Attempts are written only by the server.** The requirement is that
+  client-supplied scores are never trusted. Rather than permit an insert and
+  try to constrain which columns a client may set, all writes go through an
+  Edge Function under the service-role key. The function computes the score
+  authoritatively and returns it, so an anonymous user — who has no row to
+  read, because `anon` has no policy — still sees their result.
+- **Soft delete needed a function.** The SELECT policy hides rows where
+  `deleted_at is null` is false. PostgreSQL re-checks an updated row against
+  the table's SELECT policies, so a plain
+  `update quizzes set deleted_at = now()` fails with "new row violates
+  row-level security policy" — the row it produces is one the policy says the
+  owner may not see. PostgreSQL forbids `WITH CHECK` on a SELECT policy, so
+  this cannot be relaxed in the policy. `public.soft_delete_quiz()` performs it
+  as `SECURITY DEFINER` after checking ownership itself.
+- **Share expiry is enforced in the database.** `public.resolve_share_link()`
+  and `public.record_share_access()` apply expiry, revocation and access-cap
+  rules, and are executable by `service_role` only.
 
 ### Invariants this enforces
 
@@ -470,83 +437,86 @@ the working Firebase state. There is no database to unwind.
 
 ---
 
-## 12. Decisions required before implementation
+## 12. Decisions — resolved and outstanding
 
-1. **Supabase project** — who creates it, and can you provide the project URL
-   and anon key? (I will not create accounts or provision infrastructure.)
-2. **Storage — is it needed at all?** My recommendation is **no persistent
-   bucket**, based on the approved "discard after generation" policy. Please
-   confirm, or state that originals must be retained.
-3. **Docker on your Windows machine?** Determines whether RLS tests run locally
-   or against a hosted test project.
-4. **Anonymous share attempts** — should someone taking a shared quiz without
-   signing in have their attempt recorded with `user_id = null`? Affects the
-   attempts RLS policy.
-5. **Cutover style** — clean swap (recommended, since there is no data) or a
-   deliberate dual-run period anyway?
-6. **AI provider** — remains unselected. Confirm this stays deferred until
-   phase 8.
-7. **30-day retention enforcement** — approve a scheduled cleanup function, or
-   defer?
+### Resolved by the owner before Phase 1
+
+| #   | Decision                  | Outcome                                                                                                                              |
+| --- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Supabase project          | Owner creates it; URL + anon key supplied when the app is wired. No credentials needed for Phase 1.                                  |
+| 2   | Persistent Storage bucket | **Not needed.** Process in memory, then discard. No bucket is created.                                                               |
+| 3   | Docker / local stack      | **Not required.** Tests run on PGlite inside Node. This was the constraint that shaped the test harness.                             |
+| 4   | Anonymous attempts        | **Supported.** `quiz_attempts.user_id` is nullable; abuse prevention is server-side.                                                 |
+| 5   | Cutover                   | **Clean swap.** No dual-run, because there is no production data.                                                                    |
+| 6   | AI provider               | **Deferred.** Still unselected.                                                                                                      |
+| 7   | 30-day cleanup            | **Eligible temporary records only.** Share links are purgeable; quiz history and attempts are user-owned and are never auto-deleted. |
+
+### Still open
+
+1. **Create the Supabase project** and supply the project URL and anon key.
+   Blocking for the auth phase, not for the database phase.
+2. **Apply the migrations** to a real project and re-run the RLS checks in
+   `docs/SUPABASE_SETUP.md` §5. The suite proves the SQL against PostgreSQL; it
+   cannot prove hosted Supabase behaviour.
+3. **30-day sweep execution** — eligibility is encoded in the database, but the
+   scheduled job that performs the delete is not implemented.
+4. **AI provider selection** — deliberately deferred.
 
 ---
 
 ## 13. Phased implementation sequence
 
-Each phase ends with a coherent commit, updated docs, and reported test results.
+| #   | Phase                                 | Status             | Deliverable                                                                                  |
+| --- | ------------------------------------- | ------------------ | -------------------------------------------------------------------------------------------- |
+| 1   | Project + local setup                 | **Done** (adapted) | `supabase/migrations/`, env contract documented in `docs/SUPABASE_SETUP.md`. No Docker used. |
+| 2   | Schema + migrations                   | **Done**           | Five migration files; applied and verified on every test run                                 |
+| 3   | RLS policies + **executed** tests     | **Done**           | 74 executed assertions, plus mutation-checked so they fail when a policy is broken           |
+| 4   | Google-only auth                      | Next               | Supabase Auth wired; Firebase kept until verified                                            |
+| 5   | Profiles + quiz persistence           | Not started        | Owner CRUD, replaces the prototype alert                                                     |
+| 6   | Secure sharing + server-side grading  | Not started        | Edge Functions implementing `docs/SHARE_LINK_API.md`                                         |
+| 7   | Storage (conditional)                 | Not needed         | Owner decided against persistent storage                                                     |
+| 8   | Server-side AI + quotas               | Not started        | Edge Function behind `AIProvider`; server-enforced quotas                                    |
+| 9   | Docs cleanup + Firebase removal       | Not started        | Delete `firestore.rules`/`firebase.json`, drop the `firebase` dependency                     |
+| 10  | Final verification + migration report | Not started        | Full test run, actual counts, commit hashes                                                  |
 
-| #   | Phase                                 | Deliverable                                                                                                |
-| --- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| 1   | Project + local setup                 | `supabase/` config, CLI working, migrations dir, env var contract documented                               |
-| 2   | Schema + migrations                   | SQL above, applied cleanly via `supabase db reset`                                                         |
-| 3   | RLS policies + **executed** tests     | Policies plus tests that actually run against local/test Postgres                                          |
-| 4   | Google-only auth                      | Supabase Auth wired; Firebase kept until verified; sign-in/out tested on web                               |
-| 5   | Profiles + quiz persistence           | Owner CRUD, replaces the prototype alert                                                                   |
-| 6   | Secure sharing + server-side grading  | Edge Functions implementing `docs/SHARE_LINK_API.md`, answers hidden until submit                          |
-| 7   | Storage (conditional)                 | Only if decision 2 says retain originals                                                                   |
-| 8   | Server-side AI + quotas               | Edge Function behind `AIProvider`; server-enforced quotas                                                  |
-| 9   | Docs cleanup + Firebase removal       | Replace `docs/FIREBASE_SETUP.md`, delete `firestore.rules`/`firebase.json`, drop the `firebase` dependency |
-| 10  | Final verification + migration report | Full test run, actual pass/fail counts, commit hashes                                                      |
-
-Phases 1–3 are safe to do without touching the running app. Phase 4 is the
-first that changes user-visible behaviour.
+Phase 4 is the first that changes user-visible behaviour. Phases 1–3 are
+complete and touched no application code.
 
 ---
 
-## 14. Files that would change
-
-**Rewritten**
-
-- `services/firebase.ts` → replaced by a Supabase client + config diagnostics
-- `services/auth.ts` → Supabase Auth (Google only)
-- `App.tsx` — auth wiring, `User` type
-- `screens/SignIn.tsx` — config checks, no Firebase references
-- `screens/Account.tsx` — Supabase user shape
-- `screens/__tests__/Account.test.tsx`, `screens/__tests__/SignIn.test.tsx`
-- `services/__tests__/auth.test.ts`, `services/__tests__/firebase.test.ts`
-- `tests/App.test.tsx`
-- `package.json` — `firebase` → `@supabase/supabase-js`
-
-**Deleted**
-
-- `firebase.json`, `firestore.rules`, `jest.rules.config.js`
-- `tests/rules/firestore.rules.test.ts` (the 45 unexecuted Firestore tests —
-  their _intent_ is carried into the RLS test suite, which must actually run)
+## 14. Files that changed — Phase 1 (actual)
 
 **Added**
 
-- `supabase/migrations/*.sql`, `supabase/config.toml`
-- `supabase/functions/*` (sharing, grading, generation)
-- RLS test suite
-- `docs/SUPABASE_SETUP.md` (replaces `docs/FIREBASE_SETUP.md`)
+- `supabase/migrations/20261023000001_core_schema.sql`
+- `supabase/migrations/20261023000002_rls_policies.sql`
+- `supabase/migrations/20261023000003_retention.sql`
+- `supabase/migrations/20261023000004_share_resolution.sql`
+- `supabase/migrations/20261023000005_soft_delete.sql`
+- `tests/database/harness.mjs`, `tests/database/rls.test.mjs`,
+  `tests/database/schema.test.mjs`
+- `docs/SUPABASE_SETUP.md`
 
-**Updated**
+**Modified**
 
-- `ARCHITECTURE.md` (§3.9 data model is Firestore-shaped throughout)
-- `PROJECT_CONTEXT.md`, `NEXT_STEPS.md`, `CHANGELOG.md`, `README.md`
-- `docs/SHARE_LINK_API.md` (retarget from generic API to Edge Functions)
+- `package.json` — added the `test:db` script and the `@electric-sql/pglite`
+  dev dependency
+- `jest.config.js` — `tests/database/` added to `testPathIgnorePatterns` so the
+  node:test suite can never be collected by Jest
 
-**Unchanged**
+**Deliberately unchanged**
 
-- All of `theme/`, `components/`, `hooks/` — the approved design system is
-  untouched, per the "not a frontend rewrite" constraint.
+- Every file under `theme/`, `components/`, `hooks/`, `screens/`, `services/`
+  and `types/` — this is a backend migration, not a frontend rewrite.
+- All Firebase code. Authentication still runs on Firebase and still works.
+
+**Still to change in later phases**
+
+- `services/firebase.ts` → Supabase client; `services/auth.ts` → Supabase Auth
+- `App.tsx`, `screens/SignIn.tsx`, `screens/Account.tsx` and their tests
+- `package.json` — `firebase` → `@supabase/supabase-js`
+- Delete `firebase.json`, `firestore.rules`, `jest.rules.config.js`,
+  `tests/rules/firestore.rules.test.ts`
+- Add `supabase/functions/*`
+- Update `ARCHITECTURE.md` §3.9 (still Firestore-shaped), `README.md`,
+  `docs/SHARE_LINK_API.md`

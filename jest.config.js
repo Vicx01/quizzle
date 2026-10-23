@@ -23,7 +23,14 @@ module.exports = {
   // available in CI or in this sandbox. They are excluded here so `npm test`
   // stays green without one, and run explicitly via `npm run test:rules`
   // (see jest.rules.config.js).
-  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/tests/rules/'],
+  // The database suite (tests/database) uses node:test + PGlite, not Jest, and
+  // runs via `npm run test:db`. Ignored here so adding a .ts file there can
+  // never break `npm test`.
+  testPathIgnorePatterns: [
+    '<rootDir>/node_modules/',
+    '<rootDir>/tests/rules/',
+    '<rootDir>/tests/database/',
+  ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
 
   moduleNameMapper: {

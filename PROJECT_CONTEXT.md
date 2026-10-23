@@ -91,8 +91,22 @@ are **not** implemented — see §10.
 ## 7. Retention policy — APPROVED (per owner direction)
 
 - Uploaded source material: temporary processing; discard after generation by default.
-- Saved quiz history: 30 days.
+- Saved quiz history: 30 days. **REFINED 2026-10-23 — see below.**
 - Share links: 30 days, revocable earlier.
+
+**2026-10-23 refinement (owner direction, Supabase Phase 1).** The "saved quiz
+history: 30 days" line above is superseded for automatic behaviour:
+
+- **Quiz history, attempts and answers are user-owned records. They are never
+  deleted automatically.** Only the user can delete them.
+- **30-day cleanup applies only to eligible temporary records** — currently
+  share links. This is encoded in `public.retention_purge_candidates`, which
+  lists `share_links` and nothing else.
+- The document-processing rules below are unchanged and remain approved.
+
+The distinction exists so that no scheduled job can ever destroy a user's own
+quiz history by accident.
+
 - Inactive-user cleanup: NOT implemented for initial release. Deletion after 90 days of inactivity is deferred until the inactivity definition, user warning process, and recovery safeguards are documented and approved.
 
 Clarify what happens to attempts and shares when a quiz or account is deleted.
@@ -163,6 +177,32 @@ grant no direct access; a server endpoint resolves the token and returns an
 allowlisted subset. That endpoint is specified in `docs/SHARE_LINK_API.md` and
 **not implemented**, so sharing does not function yet.
 
+### Supabase database foundation — implemented (2026-10-23)
+
+The Firebase-to-Supabase migration has begun with **Phase 1: database
+foundation**. This is schema-only and is fully separated from the running app.
+
+- Nine tables in `public`: `profiles`, `quizzes`, `questions`,
+  `question_answer_keys`, `share_links`, `quiz_attempts`, `attempt_answers`,
+  `usage_counters`, `generation_log`.
+- RLS is enabled on all nine. `usage_counters` and `generation_log` have **no**
+  client policies at all and are reachable only by trusted server code.
+- Correct answers live in `question_answer_keys`, a physically separate table
+  from `questions`. Taking a quiz never grants access to the answer key.
+- Share tokens are stored only as SHA-256 hashes.
+- `quiz_attempts.user_id` is nullable, so anonymous share attempts are
+  supported; abuse prevention is server-side.
+- **74 database tests execute on every run** (`npm run test:db`) against real
+  PostgreSQL via PGlite — no Docker, no local Supabase stack, no credentials.
+  The suite is mutation-checked: deliberately breaking any of six controls
+  makes it fail.
+
+**No application code was changed and Firebase authentication is untouched and
+still working.** No Supabase project exists yet and nothing is deployed.
+
+See `docs/SUPABASE_MIGRATION.md` (plan) and `docs/SUPABASE_SETUP.md`
+(project setup) for detail.
+
 See `NEXT_STEPS.md` for the Phase 4 acceptance criteria and the blocking decisions.
 
 ## 11. Key open decisions
@@ -173,6 +213,12 @@ See `NEXT_STEPS.md` for the Phase 4 acceptance criteria and the blocking decisio
   end. Firestore security rules are the outstanding Firebase work.
 - **Navigation** — the custom tab shell is kept. `expo-router` stays installed but unused; do not migrate without a concrete requirement.
 - Final owner approval of `ARCHITECTURE.md` (stack, data model, security, provider order, deployment).
+- ~~**Persistent document storage**~~ — RESOLVED (2026-10-23): not needed. Documents are processed in memory and discarded; no Storage bucket is created.
+- ~~**Docker / local Supabase stack**~~ — RESOLVED (2026-10-23): not required. Database tests run on PGlite inside Node.
+- ~~**Clean migration vs dual-run**~~ — RESOLVED (2026-10-23): clean swap; there is no production data to migrate.
+- **Create the Supabase project** and supply its URL and anon key. Blocks the auth phase, not the database phase.
+- **Apply the migrations to a real Supabase project** and re-run the RLS verification checks in `docs/SUPABASE_SETUP.md` §5.
+- **Schedule the 30-day share-link sweep.** Eligibility is encoded in the database; the job that performs the delete is not built.
 - AI provider selection after live free-tier verification (NVIDIA NIM / GroqCloud / Mistral).
 - File size, text length, generation frequency, and storage quotas (not yet finalised).
 - Theory-question grading approach: AI-assisted grading against a transparent rubric, with review/self-assessment option (approved in principle; details in a later phase).

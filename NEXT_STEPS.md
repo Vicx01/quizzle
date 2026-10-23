@@ -1,8 +1,8 @@
 # Quizzle — Next Steps
 
-**Current phase:** Phase 3 — application foundation (COMPLETE, accessibility fixes applied)
+**Current phase:** Supabase migration — Phase 1 database foundation (COMPLETE). Phase 2 (Google-only Supabase Auth) is next.
 
-**Status:** Foundation built and all checks green. **WCAG AA contrast RESOLVED.** **Google sign-in VERIFIED — the owner ran the flow and confirmed a successful sign-in.** Not yet done: sign-out is not wired to any UI, Firestore is unused, no Firestore security rules exist, and the server-side API layer (AI provider) is deliberately NOT implemented.
+**Status:** The Supabase PostgreSQL schema and RLS policies are implemented and covered by 74 executed tests. Firebase authentication is untouched and still working. No Supabase project has been created and nothing is deployed.
 
 **Last updated:** 2026-10-23
 
@@ -10,7 +10,59 @@
 
 ---
 
-## Current status — Google sign-in VERIFIED (2026-10-23)
+## Current status — Supabase database foundation COMPLETE (2026-10-23)
+
+Phase 1 of the Firebase → Supabase migration is done. It is **database-only**:
+no application code changed, Firebase still handles sign-in, and no migration
+has been applied to any Supabase project.
+
+### What was built
+
+- Five migrations in `supabase/migrations/` creating nine tables, RLS policies,
+  retention eligibility, share-link resolution and soft delete.
+- `tests/database/` — 74 executed tests (`npm run test:db`) running the real
+  migrations against real PostgreSQL (PGlite, WebAssembly). **No Docker, no
+  local Supabase stack, no credentials, no network.**
+- `docs/SUPABASE_SETUP.md` — the dashboard steps only you can perform.
+
+### Security model in one paragraph
+
+RLS is enabled on all nine tables and defaults to deny. `usage_counters` and
+`generation_log` have **no client policies at all**. Correct answers live in a
+physically separate table (`question_answer_keys`) from the question text, so
+the future shared-quiz function cannot leak them with a careless `select *`.
+Share tokens are stored only as SHA-256 hashes. Attempts are written
+exclusively by server code, so a client can never supply its own score.
+Anonymous attempts are supported with `user_id = null`.
+
+### Test results (actual)
+
+| Suite                        | Count | Result                             |
+| ---------------------------- | ----- | ---------------------------------- |
+| Database (`npm run test:db`) | 74    | **74 passed, 0 failed, 0 skipped** |
+| App (`npm test`)             | 149   | 149 passed, 14 suites              |
+| Typecheck                    | —     | clean                              |
+| Lint                         | —     | 0 errors, 7 pre-existing warnings  |
+| Prettier                     | —     | clean                              |
+
+The database suite is **mutation-checked**: breaking any of six controls
+(dropping RLS, removing the ownership check, exposing answer keys, letting
+clients edit counters or access counts, or removing the 30-day share-link
+limit) makes it fail. The tests are not vacuous.
+
+### What is NOT verified
+
+- **Nothing has run against hosted Supabase.** No project exists yet. PGlite is
+  real PostgreSQL, but GoTrue, PostgREST and Supabase's managed `auth` schema
+  are emulated, not reproduced.
+- **No security behaviour is confirmed on a live database.** Passing here means
+  "the SQL behaves correctly on PostgreSQL", not "the production database is
+  secure".
+- The 45 Firestore rules tests remain **written and unexecuted**.
+
+---
+
+## Previous status — Google sign-in VERIFIED (2026-10-23)
 
 **The owner ran the flow and confirmed a successful Google sign-in.** This was
 the last open blocker from Phase 3: authentication is no longer a question mark,
