@@ -208,52 +208,115 @@ describe('quizzes/{quizId}', () => {
   });
 });
 
-describe('quizzes — public sharing', () => {
+describe('quizzes — shared access is server-mediated, never direct', () => {
+  // v3: there is no public read path. A quiz the owner has marked public, with
+  // a share link seeded by the server, must grant NO direct read access to
+  // anyone but the owner. The quiz document embeds questions[].correctAnswer,
+  // so any non-owner read would leak the answer key.
+  const SHARE_TOKEN = 'tok-123';
+
   const sharedQuiz = {
     ownerId: ALICE,
     title: 'Shared quiz',
     isPublic: true,
-    shareToken: 'tok-123',
+    shareToken: SHARE_TOKEN,
     deletedAt: null,
     createdAt: Timestamp.now(),
+    questions: [
+      {
+        id: 'qn1',
+        type: 'MCQ',
+        prompt: 'Which gas do plants absorb?',
+        options: ['O2', 'CO2'],
+        correctAnswer: 'CO2',
+        explanation: 'Plants take in CO2 for photosynthesis.',
+      },
+    ],
   };
+
+  const future = () => Timestamp.fromMillis(Date.now() + 86_400_000);
+  const past = () => Timestamp.fromMillis(Date.now() - 1000);
 
   // shareLinks is server-written, so it is seeded with the admin context.
   async function seedShareLink(link: Record<string, unknown>) {
     await testEnv.withSecurityRulesDisabled(ctx =>
-      ctx.firestore().doc('shareLinks/tok-123').set(link)
+      ctx.firestore().doc(`shareLinks/${SHARE_TOKEN}`).set(link)
     );
   }
 
-  it('allows public read when the share link is active', async () => {
+  /** Returns the document data if the read succeeded, or null if it was denied. */
+  async function tryRead(dbHandle: ReturnType<typeof db>, path: string) {
+    try {
+      const snap = await getDoc(doc(dbHandle, 'quizzes', path));
+      return snap.data() ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  it('blocks ANONYMOUS direct reads even when the share link is live', async () => {
     await db(ALICE).doc('quizzes/q1').set(sharedQuiz);
-    await seedShareLink({ quizId: 'q1', expiresAt: Timestamp.fromMillis(Date.now() + 86_400_000) });
-    await assertSucceeds(getDoc(doc(db(BOB), 'quizzes', 'q1')));
-    await assertSucceeds(getDoc(doc(db(), 'quizzes', 'q1')));
+    await seedShareLink({ quizId: 'q1', expiresAt: future() });
+    await assertFails(getDoc(doc(db(), 'quizzes', 'q1')));
   });
 
-  it('blocks public read once the share link is revoked', async () => {
+  it('blocks other signed-in users even when the share link is live', async () => {
     await db(ALICE).doc('quizzes/q1').set(sharedQuiz);
-    await seedShareLink({
-      quizId: 'q1',
-      expiresAt: Timestamp.fromMillis(Date.now() + 86_400_000),
-      revokedAt: Timestamp.now(),
+    await seedShareLink({ quizId: 'q1', expiresAt: future() });
+    await assertFails(getDoc(doc(db(BOB), 'quizzes', 'q1')));
+  });
+
+  it('NEVER exposes the answer key to a non-owner', async () => {
+    // Regression test for the v3 change. If a future rule reintroduces a
+    // public read path, `leaked` becomes non-null and this fails.
+    await db(ALICE).doc('quizzes/q1').set(sharedQuiz);
+    await seedShareLink({ quizId: 'q1', expiresAt: future() });
+    const leaked = await tryRead(db(BOB), 'q1');
+    expect(leaked).toBeNull();
+    const leakedAnon = await tryRead(db(), 'q1');
+    expect(leakedAnon).toBeNull();
+  });
+
+  it('grants nothing on an EXPIRED share link', async () => {
+    await db(ALICE).doc('quizzes/q1').set(sharedQuiz);
+    await seedShareLink({ quizId: 'q1', expiresAt: past() });
+    await assertFails(getDoc(doc(db(BOB), 'quizzes', 'q1')));
+    await assertFails(getDoc(doc(db(), 'quizzes', 'q1')));
+  });
+
+  it('grants nothing on a REVOKED share link', async () => {
+    await db(ALICE).doc('quizzes/q1').set(sharedQuiz);
+    await seedShareLink({ quizId: 'q1', expiresAt: future(), revokedAt: Timestamp.now() });
+    await assertFails(getDoc(doc(db(BOB), 'quizzes', 'q1')));
+  });
+
+  it('grants nothing on a FORGED share link invented client-side', async () => {
+    // The owner may set isPublic and shareToken on their own quiz, but cannot
+    // mint the shareLinks row, so the quiz must stay private.
+    await db(ALICE).doc('quizzes/q1').set(sharedQuiz);
+    // Deliberately no shareLinks document seeded.
+    await assertFails(getDoc(doc(db(BOB), 'quizzes', 'q1')));
+    await assertFails(getDoc(doc(db(), 'quizzes', 'q1')));
+  });
+
+  it('still lets the OWNER read their own shared quiz', async () => {
+    await db(ALICE).doc('quizzes/q1').set(sharedQuiz);
+    await seedShareLink({ quizId: 'q1', expiresAt: future() });
+    await assertSucceeds(getDoc(doc(db(ALICE), 'quizzes', 'q1')));
+  });
+
+  it('lets the SERVER read the quiz, which is how sharing works', async () => {
+    // The share API reads the quiz with the Admin SDK and returns a sanitised
+    // copy. Rules intentionally do not block this path.
+    await db(ALICE).doc('quizzes/q1').set(sharedQuiz);
+    await seedShareLink({ quizId: 'q1', expiresAt: future() });
+
+    let serverSnapshot: { exists: boolean } | undefined;
+    await testEnv.withSecurityRulesDisabled(async ctx => {
+      const snap = await ctx.firestore().doc('quizzes/q1').get();
+      serverSnapshot = { exists: snap.exists };
     });
-    await assertFails(getDoc(doc(db(BOB), 'quizzes', 'q1')));
-  });
-
-  it('blocks public read once the share link has expired', async () => {
-    await db(ALICE).doc('quizzes/q1').set(sharedQuiz);
-    await seedShareLink({ quizId: 'q1', expiresAt: Timestamp.fromMillis(Date.now() - 1000) });
-    await assertFails(getDoc(doc(db(BOB), 'quizzes', 'q1')));
-  });
-
-  it('blocks public read when isPublic is false even with a live token', async () => {
-    await db(ALICE)
-      .doc('quizzes/q1')
-      .set({ ...sharedQuiz, isPublic: false });
-    await seedShareLink({ quizId: 'q1', expiresAt: Timestamp.fromMillis(Date.now() + 86_400_000) });
-    await assertFails(getDoc(doc(db(BOB), 'quizzes', 'q1')));
+    expect(serverSnapshot?.exists).toBe(true);
   });
 });
 

@@ -973,3 +973,90 @@ tsc clean · eslint 0 errors / 7 warnings (all pre-existing) · prettier clean �
 **app suite 149 tests / 14 suites** (unchanged; rules tests stay excluded).
 
 Nothing was deployed, no billing enabled, no data written.
+---
+
+## 2026-10-23 — Shared quizzes are now server-mediated; `isSharedQuiz()` removed
+
+Implements the recommended design. **Rules still not deployed, still not
+executed. No production data written and no AI work started.**
+
+### Rules: v3
+
+`isSharedQuiz()` is **gone**. `quizzes` is now owner-only for every client:
+
+```js
+allow read: if isSignedIn() && resource.data.get('ownerId', null) == uid();
+```
+
+Why: the quiz document embeds `questions[].correctAnswer` and
+`questions[].explanation`, and Firestore rules cannot redact individual fields
+from a document read. Any non-owner read hands out the answer key. A share link
+now grants **no direct access** to the quiz at all.
+
+Also removed `shareLinkIsActive`, `shareLinkExists`, `shareLinkRevokedAt` and
+`shareLinkExpiresAt` — dead once public reads went away. `quizExists`,
+`quizOwnerId` and `isQuizOwner` remain, since `quizAttempts` genuinely needs the
+cross-document lookup.
+
+Unchanged: private quizzes stay owner-only; `shareLinks` writes and all
+`rateLimits` access stay denied; `ownerId` stays immutable; the deny-by-default
+catch-all stays. `shareLinks` reads remain open (tokens are unguessable and the
+document exposes only `quizId` plus counters), flagged as an open question
+rather than silently changed.
+
+### `docs/SHARE_LINK_API.md` (new) — contract only, no code
+
+Specifies the two endpoints the API layer must implement:
+
+- **`GET /api/share/:token`** — validates existence, `revokedAt`, `expiresAt`,
+  `maxAccess` and quiz `deletedAt`; atomically increments `accessCount`;
+  returns an **allowlist** (quizId, title, format, difficulty, questionCount,
+  timerSeconds, and questions with id/type/prompt/options/latexBlocks).
+  Never returns `correctAnswer`, `explanation`, owner identity, source
+  metadata or sharing internals. Allowlist rather than denylist, because a
+  denylist silently leaks every field added later.
+- **`POST /api/share/:token/attempts`** — re-validates the link, validates
+  answer shape and that question ids belong to the quiz, grades **server-side**,
+  and only then returns scores and explanations.
+
+Plus: one **generic 404** for every failure (expired, revoked, non-existent)
+so the endpoint is not a token oracle; rate limits; `Cache-Control: no-store`.
+
+### Tests: 45 written, 0 executed (was 41)
+
+Replaced the four old "public read succeeds" tests, which asserted the
+behaviour that has now been removed as unsafe. The sharing block now asserts
+the opposite:
+
+- anonymous direct read **denied** even with a live share link
+- other signed-in user **denied** even with a live link
+- **answer key never exposed** — regression test asserting a non-owner read
+  yields no data; if a public read path is ever reintroduced, this fails
+- expired link grants nothing
+- revoked link grants nothing
+- forged link (owner sets `isPublic`/`shareToken` but cannot mint
+  `shareLinks`) grants nothing
+- owner can still read their own shared quiz
+- the **server** can read the quiz, which is the intended sharing path
+
+Covers the four cases requested: anonymous direct reads, forged links, expired
+links, and answer-key exposure.
+
+**These have not run.** The Firestore emulator remains unavailable here, so 45
+tests are written and unexecuted. They are excluded from `npm test` and are not
+counted as passing.
+
+### Docs
+
+ARCHITECTURE.md (conceptual rules and the share-links row, which previously
+said links expose "quiz questions/answers"), NEXT_STEPS.md, PROJECT_CONTEXT.md
+and docs/FIREBASE_SETUP.md — including two stale claims fixed: sign-out is now
+wired to the Account screen, and Firestore rules are written rather than
+non-existent.
+
+### Remaining before shared quizzes can work safely
+
+Removing the public read path means **sharing does not function at all yet**.
+Still needed: build the server API to the contract; grade server-side; verify
+the rules on the official emulator and deploy. Listed in NEXT_STEPS.md under
+"Remaining work before shared quizzes can be safe".

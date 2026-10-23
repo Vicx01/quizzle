@@ -184,29 +184,41 @@ export interface GeneratedQuiz {
 | `shareLinks`   | `shareToken`            | `quizId`, `createdAt`, `expiresAt`, `revokedAt` (nullable), `accessCount`, `maxAccess` (nullable)                                                                                                                                                                                                                                                                                                                                                                                       |
 | `rateLimits`   | `{identifier}:{window}` | `count`, `resetAt`, `identifier` (`ip`\|`uid`), `window` (`minute`\|`day`)                                                                                                                                                                                                                                                                                                                                                                                                              |
 
-**Security rules (conceptual):**
+**Security rules (implemented in `firestore.rules`, v3 — NOT DEPLOYED, NOT EXECUTED):**
 
-- `users`: readable/writable only by matching `request.auth.uid`.
-- `quizzes`: readable by owner or by anyone with a valid unexpired share token; writable only by owner.
-- `quizAttempts`: writable by authenticated user; readable by attempt owner or quiz owner.
-- `shareLinks`: readable by anyone (public token); writable only by server (service account).
-- All writes validated: field presence, types, size limits, no arbitrary HTML.
+- `users`: readable/writable only by matching `request.auth.uid`. Email is immutable; client delete denied.
+- `quizzes`: **owner only.** There is deliberately no public read path.
+- `quizAttempts`: writable by the authenticated attempt author; readable by the author or the quiz owner.
+- `shareLinks`: readable by anyone; **writable only by the server** (service account).
+- `rateLimits`: **no client access at all.**
+- Default deny for anything unmatched.
+
+**Shared quizzes are server-mediated, never a direct read.** The quiz document
+embeds `questions[].correctAnswer` and `questions[].explanation`, and Firestore
+rules cannot redact individual fields from a document read. Granting any
+non-owner read access would hand out the answer key, so a share link grants **no
+direct access** to the quiz. Instead a server endpoint reads the quiz with the
+Admin SDK and returns an allowlisted subset. See `docs/SHARE_LINK_API.md` for
+the full contract (API not yet implemented).
+
+A live `shareLinks` document therefore grants no direct quiz access. That is
+intentional and covered by tests in `tests/rules/firestore.rules.test.ts`.
 
 ---
 
 ## 4. Security approach
 
-| Requirement                               | Implementation                                                                                                                                                                                                                                       |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AI keys never in client                   | Keys stored as environment variables on the API layer only. Client calls `/api/generate-quiz` and `/api/grade-answer`, never the provider directly.                                                                                                  |
-| Never trust client-supplied IDs/ownership | All ownership derived from Firebase Auth UID (`request.auth.uid`) in Firestore rules and API middleware. Client-supplied `userId` ignored for authorization.                                                                                         |
-| Auth and DB access rules                  | Firebase Auth for identity; Firestore security rules enforce read/write ownership. API layer validates session before any privileged operation.                                                                                                      |
-| Validate uploads                          | File type (PDF/DOCX/TXT only), size cap (e.g., 5 MB), MIME type verification (not just extension), extracted-text length limits (min 100 chars, max ~50K chars).                                                                                     |
-| Abuse protection                          | Rate limit per IP and per UID on `/api/generate-quiz` (e.g., 10 generations/minute, 100/day per user). Return 429 with `Retry-After`. Track in Firestore `rateLimits` or in-memory store.                                                            |
-| Source documents untrusted                | Treat extracted text as untrusted: no HTML rendering, no script execution, sanitize before sending to AI. Prompt construction separates system instructions from user content.                                                                       |
-| Prompt injection prevention               | System prompt defines quiz-generation requirements; user document text inserted as data, not instructions. Use delimiter markers and instruct the model to treat the document as source material only.                                               |
-| Share links                               | Share tokens are unguessable (24+ char random). Share links do not expose source documents — only quiz questions/answers. Expiration (`shareExpiresAt`) and revocation (`revokedAt`) enforced in API and Firestore rules. Access count optional cap. |
-| Deletion                                  | Hard delete (or tombstone + background purge) for expired quizzes, share links, and source documents. No soft-delete-only behavior. Retention: history 30 days, share links 30 days, source discarded after generation.                              |
+| Requirement                               | Implementation                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AI keys never in client                   | Keys stored as environment variables on the API layer only. Client calls `/api/generate-quiz` and `/api/grade-answer`, never the provider directly.                                                                                                                                                                                                                                                                                          |
+| Never trust client-supplied IDs/ownership | All ownership derived from Firebase Auth UID (`request.auth.uid`) in Firestore rules and API middleware. Client-supplied `userId` ignored for authorization.                                                                                                                                                                                                                                                                                 |
+| Auth and DB access rules                  | Firebase Auth for identity; Firestore security rules enforce read/write ownership. API layer validates session before any privileged operation.                                                                                                                                                                                                                                                                                              |
+| Validate uploads                          | File type (PDF/DOCX/TXT only), size cap (e.g., 5 MB), MIME type verification (not just extension), extracted-text length limits (min 100 chars, max ~50K chars).                                                                                                                                                                                                                                                                             |
+| Abuse protection                          | Rate limit per IP and per UID on `/api/generate-quiz` (e.g., 10 generations/minute, 100/day per user). Return 429 with `Retry-After`. Track in Firestore `rateLimits` or in-memory store.                                                                                                                                                                                                                                                    |
+| Source documents untrusted                | Treat extracted text as untrusted: no HTML rendering, no script execution, sanitize before sending to AI. Prompt construction separates system instructions from user content.                                                                                                                                                                                                                                                               |
+| Prompt injection prevention               | System prompt defines quiz-generation requirements; user document text inserted as data, not instructions. Use delimiter markers and instruct the model to treat the document as source material only.                                                                                                                                                                                                                                       |
+| Share links                               | Share tokens are unguessable (24+ char random). Share links expose **questions only, never answers** — a share link grants no direct read of the quiz document, which embeds `correctAnswer`. Resolution is server-mediated (see `docs/SHARE_LINK_API.md`): the API validates expiration (`shareExpiresAt`) and revocation (`revokedAt`), then returns an allowlisted subset. Source documents are never exposed. Access count optional cap. |
+| Deletion                                  | Hard delete (or tombstone + background purge) for expired quizzes, share links, and source documents. No soft-delete-only behavior. Retention: history 30 days, share links 30 days, source discarded after generation.                                                                                                                                                                                                                      |
 
 ---
 

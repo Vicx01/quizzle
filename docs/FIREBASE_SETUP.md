@@ -4,9 +4,13 @@
 VERIFIED** — the owner ran it against the live Firebase project and confirmed a
 successful sign-in.
 
-Still open: `signOut()` is not wired to any UI (a signed-in user cannot sign
-out), and **no Firestore security rules exist**, so there is no data-access
-control yet.
+Sign-out is implemented on the Account screen.
+
+Still open: **Firestore security rules are written but not deployed or
+executed**, so they are not enforcing anything yet. Shared quizzes are
+**server-mediated**: no client can read a quiz it does not own, and share-link
+resolution is a server API that is **not yet built** (see
+`docs/SHARE_LINK_API.md`).
 
 This document explains how to configure Firebase and how to verify the flow.
 
@@ -16,17 +20,18 @@ Read `SECURITY` below before entering any values.
 
 ## 1. What is already implemented
 
-| Piece                                                  | Location               | Status                        |
-| ------------------------------------------------------ | ---------------------- | ----------------------------- |
-| Firebase app init from env vars                        | `services/firebase.ts` | Implemented                   |
-| Config diagnostics (missing / placeholder / malformed) | `services/firebase.ts` | Implemented, tested           |
-| Google sign-in (popup + redirect fallback)             | `services/auth.ts`     | Implemented, **VERIFIED**     |
-| Actionable error mapping                               | `services/auth.ts`     | Implemented, tested           |
-| Sign-in screen + setup checklist                       | `screens/SignIn.tsx`   | Implemented, tested           |
-| Sign out                                               | `services/auth.ts`     | Exported, **not wired to UI** |
-| Firestore                                              | —                      | Initialised, **unused**       |
-| Firestore security rules                               | —                      | **Not implemented**           |
-| Native (iOS/Android) auth                              | —                      | **Not implemented**           |
+| Piece                                                  | Location               | Status                       |
+| ------------------------------------------------------ | ---------------------- | ---------------------------- |
+| Firebase app init from env vars                        | `services/firebase.ts` | Implemented                  |
+| Config diagnostics (missing / placeholder / malformed) | `services/firebase.ts` | Implemented, tested          |
+| Google sign-in (popup + redirect fallback)             | `services/auth.ts`     | Implemented, **VERIFIED**    |
+| Actionable error mapping                               | `services/auth.ts`     | Implemented, tested          |
+| Sign-in screen + setup checklist                       | `screens/SignIn.tsx`   | Implemented, tested          |
+| Sign out (Account screen)                              | `screens/Account.tsx`  | Implemented, tested          |
+| Firestore                                              | —                      | Initialised, **unused**      |
+| Firestore security rules                               | `firestore.rules`      | Written, **not deployed**    |
+| Share-link resolution (server API)                     | —                      | **Contract only**, not built |
+| Native (iOS/Android) auth                              | —                      | **Not implemented**          |
 
 Nothing here contacts Firebase at build or test time. All 27 service tests run
 without credentials.
@@ -268,8 +273,9 @@ prints the exact origin under the "This app origin" label.
   bundle of every Firebase web app by design. It identifies the project; it does
   not grant access.
 - **Access is controlled by** (in order of importance):
-  1. **Firestore security rules** — must be deployed before any data is stored.
-     Not yet written.
+  1. **Firestore security rules** — must be verified against the official
+     emulator and deployed before any data is stored. `firestore.rules`
+     exists but has never been executed.
   2. **Authorized domains** — limits where sign-in can originate.
   3. **App Check** — recommended later to reduce API-key abuse.
 - **Never** put a service-account key, a Firebase Admin SDK credential, or an AI
@@ -293,7 +299,8 @@ prints the exact origin under the "This app origin" label.
 
 ## 8. Still to do (not started)
 
-- [ ] Deploy Firestore security rules (ownership enforced server-side)
+- [ ] Verify Firestore security rules against the official emulator, then deploy
+- [ ] Build the server-side share API per `docs/SHARE_LINK_API.md`
 - [ ] Server-side API layer with the replaceable `AIProvider` interface
 - [ ] AI provider free-tier verification (GroqCloud → NVIDIA NIM → Mistral)
 - [ ] Native auth: `initializeAuth` + RN persistence + native OAuth flow

@@ -150,12 +150,18 @@ deviations are not pinned.
 **Not verified:** visual rendering (no browser in the sandbox), native iOS/Android
 (no build or run), AI provider access (no keys).
 
-Firebase Auth **is** verified. Firestore is not: `firestore.rules` is written and
-statically reviewed (two defects fixed) but has **never been executed** — the
-emulator cannot run in this sandbox and neither Java-free alternative implements
-security rules. 41 rules tests are written and **unrun**. Nothing is written to
-Firestore and no rules are deployed. A known open issue: public sharing would
-expose the answer key, pending an owner decision.
+Firebase Auth **is** verified. Firestore is not: `firestore.rules` (v3) is written
+and statically reviewed but has **never been executed** — the emulator cannot run
+in this sandbox and neither Java-free alternative implements security rules.
+45 rules tests are written and **unrun**. Nothing is written to Firestore and no
+rules are deployed.
+
+**Shared quizzes are server-mediated, not a direct read.** `firestore.rules` v3
+gives no client read access to a quiz it does not own, because the quiz document
+embeds `questions[].correctAnswer` and rules cannot redact fields. Share links
+grant no direct access; a server endpoint resolves the token and returns an
+allowlisted subset. That endpoint is specified in `docs/SHARE_LINK_API.md` and
+**not implemented**, so sharing does not function yet.
 
 See `NEXT_STEPS.md` for the Phase 4 acceptance criteria and the blocking decisions.
 

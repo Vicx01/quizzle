@@ -1,9 +1,11 @@
 // ---------------------------------------------------------------------------
 // Quizzle — Firestore security rules
 //
-// STATUS: REVISED AFTER STATIC REVIEW. NOT DEPLOYED. NOT EXECUTED.
+// STATUS: v3. REVISED. NOT DEPLOYED. NOT EXECUTED.
 //
-// See "KNOWN ISSUE — public sharing exposes answers" below before deploying.
+// v3 removes public/shared quiz reads entirely. Sharing is now resolved by the
+// server-side API, which returns a sanitised quiz (see docs/SHARE_LINK_API.md).
+// No client — authenticated or not — can read a quiz it does not own.
 //
 // Model (ARCHITECTURE.md §3.9): users, quizzes, quizAttempts, shareLinks,
 // rateLimits.
@@ -13,21 +15,21 @@
 //    including collections added later.
 //  - Ownership derives from request.auth.uid, never from a client-supplied
 //    field.
-//  - Server-only collections (shareLinks writes, rateLimits) deny all client
-//    access; the Admin SDK bypasses these rules.
+//  - Server-only collections deny client writes; the Admin SDK bypasses these
+//    rules, which is how the share API reads quizzes and writes share links.
 //
 // REVIEW HISTORY
 //  v1 — initial draft.
-//  v2 — fixed two defects found by static review (see CHANGELOG 2026-10-23):
-//       1. Cross-document lookups built a malformed path. A generic
-//          doc(path) helper interpolated paths that already began with "/",
-//          producing "/databases/x/documents//quizzes/id". Helpers are now
-//          written per collection with explicit, correct path literals.
-//       2. quizzes read/update/delete used a cross-document lookup to test
-//          ownership even though resource.data.ownerId is already on the
-//          document. That costs 2 document accesses per document evaluated,
-//          which exhausts the per-request access limit and breaks list
-//          queries. Those rules now read resource.data directly.
+//  v2 — fixed two defects found by static review: malformed cross-document
+//       paths (a generic doc(path) helper produced "/documents//quizzes/id"),
+//       and a query-scaling defect where quizzes tested ownership via a
+//       cross-document lookup instead of resource.data.
+//  v3 — removed public/shared quiz reads. isSharedQuiz() allowed anonymous
+//       reads of the whole quiz document, which embeds
+//       questions[].correctAnswer and questions[].explanation, so anyone with a
+//       live share link could read the answer key before attempting the quiz.
+//       Share resolution now happens server-side and returns only the fields
+//       needed to take the quiz.
 // ---------------------------------------------------------------------------
 
 rules_version = '2';
@@ -48,11 +50,10 @@ service cloud.firestore {
     // Cross-document helpers are written per collection with explicit path
     // literals. Do NOT reintroduce a generic doc(collectionPath) helper:
     // interpolating a string that already starts with "/" yields a double
-    // slash, which produces a malformed path.
+    // slash and a malformed path.
     //
-    // Each get()/exists() below costs one document access against the
-    // per-request limit, so these are used only where the data is genuinely
-    // on another document.
+    // Each get()/exists() costs one document access against the per-request
+    // limit, so these are used only where the data is genuinely elsewhere.
 
     function quizExists(quizId) {
       return exists(/databases/$(database)/documents/quizzes/$(quizId));
@@ -64,41 +65,6 @@ service cloud.firestore {
 
     function isQuizOwner(quizId) {
       return isSignedIn() && quizExists(quizId) && quizOwnerId(quizId) == uid();
-    }
-
-    function shareLinkExists(token) {
-      return exists(/databases/$(database)/documents/shareLinks/$(token));
-    }
-
-    function shareLinkRevokedAt(token) {
-      return get(/databases/$(database)/documents/shareLinks/$(token)).data.get('revokedAt', null);
-    }
-
-    function shareLinkExpiresAt(token) {
-      return get(/databases/$(database)/documents/shareLinks/$(token)).data.get('expiresAt', null);
-    }
-
-    // A shared quiz is readable by anyone holding the link, provided the share
-    // link row exists, has not been revoked, and has not expired. The quiz
-    // stores its own shareToken, so the rule can look the link up — rules
-    // cannot read a token supplied by the client.
-    //
-    // Note: this reads shareLinks/{token}, which is already world-readable
-    // ("allow read: if true"), so the lookup discloses nothing the caller
-    // could not already read. See KNOWN ISSUE below for the real exposure
-    // concern with public quiz reads.
-    function shareLinkIsActive(token) {
-      return shareLinkExists(token)
-        && shareLinkRevokedAt(token) == null
-        && shareLinkExpiresAt(token) != null
-        && shareLinkExpiresAt(token) > request.time;
-    }
-
-    function isSharedQuiz() {
-      return resource.data.get('deletedAt', null) == null
-        && resource.data.get('isPublic', false) == true
-        && resource.data.get('shareToken', null) != null
-        && shareLinkIsActive(resource.data.shareToken);
     }
 
     // --------------------------------------------------------------- users
@@ -125,36 +91,23 @@ service cloud.firestore {
 
     // ------------------------------------------------------------- quizzes
     //
-    // KNOWN ISSUE — READ BEFORE DEPLOYING
-    // ----------------------------------
-    // isSharedQuiz() permits an UNAUTHENTICATED read of the whole quiz
-    // document. Per ARCHITECTURE.md §3.9 that document embeds
-    // questions[].correctAnswer and questions[].explanation.
+    // OWNER ONLY. There is deliberately no public/shared read path.
     //
-    // Anyone with a live share link can therefore read the answer key before
-    // attempting the quiz, which defeats the point of a quiz. The get()
-    // lookup itself is not the leak (shareLinks is already world-readable);
-    // the leak is that the answer key lives in the same document as the
-    // publicly readable questions.
+    // The quiz document embeds questions[].correctAnswer and
+    // questions[].explanation. Granting read access to anyone other than the
+    // owner would hand out the answer key, so shared quizzes are served by the
+    // server-side API instead, which strips those fields
+    // (docs/SHARE_LINK_API.md).
     //
-    // Two ways to resolve — OWNER DECISION REQUIRED:
-    //   (a) Move answers to a subcollection quizzes/{id}/answers (owner-only
-    //       read) and keep only questions public.
-    //   (b) Remove isSharedQuiz() from this rule and serve shared quizzes
-    //       through the server API, which returns a sanitised quiz.
-    // Option (b) is the safer default and matches the deny-by-default
-    // principle above.
+    // A live shareLinks document therefore grants NO direct read access to the
+    // quiz. That is intentional and covered by tests.
     //
-    // Mitigating factor today: a quiz only becomes publicly readable once the
-    // SERVER creates a matching shareLinks document, and clients cannot write
-    // shareLinks at all. So a client cannot make its own quiz public.
+    // The server reads quizzes with the Admin SDK, which bypasses these rules.
 
     match /quizzes/{quizId} {
       // resource.data.ownerId is on the document, so no cross-document lookup
-      // is needed here. That keeps list queries within the per-request
-      // document-access limit.
-      allow read: if isSignedIn() && resource.data.get('ownerId', null) == uid()
-        || isSharedQuiz();
+      // is needed. That keeps list queries within the per-request access limit.
+      allow read: if isSignedIn() && resource.data.get('ownerId', null) == uid();
 
       // Ownership is stamped from the auth UID, not taken from the client.
       allow create: if isSignedIn()
@@ -191,8 +144,15 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------- shareLinks
-    // Readable by anyone: that is how a public token resolves to a quiz.
-    // Writable by nobody from a client — only the server (Admin SDK).
+    //
+    // Writes are server-only: a client must not be able to mint or revoke a
+    // share link for its own quiz.
+    //
+    // Reads remain open so a client can resolve a token without a round trip,
+    // but note this is NOT how shared quizzes are read any more — the quiz
+    // itself is owner-only. This document only exposes quizId and counters,
+    // and tokens are unguessable. If you want to tighten further, set this to
+    // "if false" and resolve tokens exclusively through the API.
 
     match /shareLinks/{token} {
       allow read: if true;

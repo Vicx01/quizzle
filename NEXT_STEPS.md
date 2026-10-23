@@ -45,10 +45,15 @@ ARCHITECTURE.md §3.9, with a deny-by-default catch-all:
 | Collection     | Client access                                                  |
 | -------------- | -------------------------------------------------------------- |
 | `users/{uid}`  | read/write own doc only; email immutable; client delete denied |
-| `quizzes`      | owner-only, plus public read while a live share link exists    |
+| `quizzes`      | **owner only** — no public read path exists                    |
 | `quizAttempts` | own attempts, or attempts on a quiz you own                    |
 | `shareLinks`   | read by anyone; **no client writes** (server-only)             |
 | `rateLimits`   | **no client access at all**                                    |
+
+**Shared quizzes are server-mediated.** A share link grants no direct read of
+the quiz, because the document embeds `questions[].correctAnswer` and rules
+cannot redact fields. See `docs/SHARE_LINK_API.md` (contract only — the API is
+not implemented).
 
 Ownership always derives from `request.auth.uid`; a client-supplied `ownerId`
 cannot grant access, and `ownerId` is immutable so a quiz cannot be transferred
@@ -92,18 +97,37 @@ npm run test:rules
 On macOS/Linux the same sequence works with `cp`-style shells; install Java via
 your package manager (e.g. `brew install temurin@21`).
 
-**41 tests are written; 0 have been executed.** They are excluded from `npm test`
+**45 tests are written; 0 have been executed.** They are excluded from `npm test`
 (`testPathIgnorePatterns`) so a missing emulator cannot fail the app suite, and
 they must not be counted as passing until they actually run.
 
-**Before deploying, resolve the answer-key exposure** documented at the top of
-the `quizzes` block in `firestore.rules`: public sharing currently exposes
-`questions[].correctAnswer` to unauthenticated readers. That needs an owner
-decision. Only deploy after review:
+**Answer-key exposure resolved (v3).** `isSharedQuiz()` has been removed, so no
+client can read a quiz it does not own. Sharing is now the server API's job
+(`docs/SHARE_LINK_API.md`). Only deploy after review:
 
 ```bash
 firebase deploy --only firestore:rules
 ```
+
+### Remaining work before shared quizzes can be safe
+
+Removing the public read path makes the rules safe, but it also means **sharing
+does not work at all yet**. The following must exist before the feature is
+turned on:
+
+1. **Build the server-side API layer** (not started) implementing
+   `docs/SHARE_LINK_API.md`: `GET /api/share/:token` and
+   `POST /api/share/:token/attempts`.
+2. **Allowlist, never denylist** the share response. A denylist silently leaks
+   every field added to the quiz document later.
+3. **Grade server-side.** The client must never receive the answer key before
+   submitting, or it could grade itself and leak answers.
+4. **Generic 404 for every failure** — expired, revoked and non-existent must be
+   indistinguishable, or the endpoint becomes a token oracle.
+5. **Verify the rules** against the official emulator, then deploy.
+6. **Decide** whether `shareLinks` stays world-readable (open question 1 in
+   `docs/SHARE_LINK_API.md`), and whether share attempts are recorded
+   anonymously (open question 2).
 
 ### Environment file convention (2026-10-23)
 
