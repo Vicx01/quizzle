@@ -1,7 +1,7 @@
 /**
  * Quizzle — App root (application shell).
  *
- * Wraps the app in ThemeProvider and manages Firebase Auth state.
+ * Wraps the app in ThemeProvider and manages Supabase Auth state.
  * When unauthenticated: shows the SignIn screen.
  * When authenticated: shows the main tab navigation with the Generate screen active.
  *

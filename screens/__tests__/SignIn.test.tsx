@@ -2,16 +2,16 @@
  * Quizzle — Sign-in screen tests.
  *
  * Verifies the two mutually exclusive states:
- *  - Firebase misconfigured -> setup checklist, NO sign-in button (we must never
+ *  - Supabase misconfigured -> setup checklist, NO sign-in button (we must never
  *    render a control that cannot work).
- *  - Firebase configured    -> working sign-in button.
+ *  - Supabase configured    -> working sign-in button.
  */
 
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { SignInScreen } from '../SignIn';
 import { ThemeProvider } from '../../theme/ThemeContext';
-import type { ConfigStatus } from '../../services/firebase';
+import type { ConfigStatus } from '../../services/configStatus';
 
 function Harness({ children }: { children: React.ReactNode }) {
   return <ThemeProvider>{children}</ThemeProvider>;
@@ -22,8 +22,8 @@ const OK_STATUS: ConfigStatus = { ok: true, errors: [], warnings: [] };
 const BROKEN_STATUS: ConfigStatus = {
   ok: false,
   errors: [
-    { key: 'EXPO_PUBLIC_FIREBASE_API_KEY', kind: 'missing', message: 'not set' },
-    { key: 'EXPO_PUBLIC_FIREBASE_PROJECT_ID', kind: 'placeholder', message: 'placeholder' },
+    { key: 'EXPO_PUBLIC_SUPABASE_URL', kind: 'missing', message: 'not set' },
+    { key: 'EXPO_PUBLIC_SUPABASE_ANON_KEY', kind: 'placeholder', message: 'placeholder' },
   ],
   warnings: [],
 };
@@ -55,7 +55,7 @@ describe('SignInScreen — configured', () => {
         <SignInScreen onSignIn={() => {}} configStatus={OK_STATUS} />
       </Harness>
     );
-    expect(queryByTestId('firebase-setup-panel')).toBeNull();
+    expect(queryByTestId('auth-setup-panel')).toBeNull();
   });
 
   it('shows an inline error when provided', () => {
@@ -75,8 +75,8 @@ describe('SignInScreen — misconfigured', () => {
         <SignInScreen onSignIn={() => {}} configStatus={BROKEN_STATUS} />
       </Harness>
     );
-    expect(getByTestId('firebase-setup-panel')).toBeTruthy();
-    expect(getByText('Finish Firebase setup')).toBeTruthy();
+    expect(getByTestId('auth-setup-panel')).toBeTruthy();
+    expect(getByText('Finish Supabase setup')).toBeTruthy();
   });
 
   it('names each missing variable so the user knows exactly what to set', () => {
@@ -85,8 +85,8 @@ describe('SignInScreen — misconfigured', () => {
         <SignInScreen onSignIn={() => {}} configStatus={BROKEN_STATUS} />
       </Harness>
     );
-    expect(getByText(/EXPO_PUBLIC_FIREBASE_API_KEY/)).toBeTruthy();
-    expect(getByText(/EXPO_PUBLIC_FIREBASE_PROJECT_ID/)).toBeTruthy();
+    expect(getByText(/EXPO_PUBLIC_SUPABASE_URL/)).toBeTruthy();
+    expect(getByText(/EXPO_PUBLIC_SUPABASE_ANON_KEY/)).toBeTruthy();
   });
 
   it('does NOT render the sign-in button (no dead control)', () => {
@@ -141,7 +141,7 @@ describe('SignInScreen — sign-in environment diagnostics', () => {
     expect(queryByText(/Open in a new browser tab to sign in/i)).toBeNull();
   });
 
-  it('does not show environment diagnostics when Firebase is misconfigured', () => {
+  it('does not show environment diagnostics when Supabase is misconfigured', () => {
     const { queryByTestId } = render(
       <Harness>
         <SignInScreen onSignIn={() => {}} configStatus={BROKEN_STATUS} embedded />

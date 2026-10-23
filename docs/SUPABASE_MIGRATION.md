@@ -415,11 +415,22 @@ session restoration across reload, sign-out returning to the sign-in screen with
 protected screens unreachable, and the existing diagnostics that print the
 current origin (which solved the earlier no-address-bar problem).
 
-### Cutover rule
+### Cutover rule — how it was actually applied
 
-**Firebase stays until Supabase sign-in is verified on the real platforms.** The
-config-check mechanism should be extended so a missing Supabase config produces
-the same actionable setup state rather than a dead button.
+The rule was **"Firebase stays until Supabase sign-in is verified on the real
+platforms."** Because this sandbox has no network path to Google or to the
+Supabase host, that verification is impossible from here — so the rule was
+resolved the other way at the owner's explicit instruction: Supabase became the
+sole provider in code, and the outstanding browser verification is **labelled
+rather than silently assumed**.
+
+The second half of the rule was honoured exactly: a missing or malformed
+Supabase config produces the actionable "Finish Supabase setup" checklist, never
+a dead sign-in button.
+
+**Status of the live OAuth migration: not complete.** It requires (a) rotating
+the Google OAuth client secret, which could not be verified, and (b) one
+successful real-browser sign-in by the owner.
 
 ---
 
@@ -493,21 +504,26 @@ the working Firebase state. There is no database to unwind.
 
 ## 13. Phased implementation sequence
 
-| #   | Phase                                 | Status             | Deliverable                                                                                     |
-| --- | ------------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------- |
-| 1   | Project + local setup                 | **Done** (adapted) | `supabase/migrations/`, env contract documented in `docs/SUPABASE_SETUP.md`. No Docker used.    |
-| 2   | Schema + migrations                   | **Done**           | Five migration files; applied and verified on every test run                                    |
-| 3   | RLS policies + **executed** tests     | **Done**           | 74 executed assertions, plus mutation-checked so they fail when a policy is broken              |
-| 4   | Google-only auth                      | **In progress**    | Supabase Auth implemented behind a switch; Firebase still default; **not yet run by the owner** |
-| 5   | Profiles + quiz persistence           | Not started        | Owner CRUD, replaces the prototype alert                                                        |
-| 6   | Secure sharing + server-side grading  | Not started        | Edge Functions implementing `docs/SHARE_LINK_API.md`                                            |
-| 7   | Storage (conditional)                 | Not needed         | Owner decided against persistent storage                                                        |
-| 8   | Server-side AI + quotas               | Not started        | Edge Function behind `AIProvider`; server-enforced quotas                                       |
-| 9   | Docs cleanup + Firebase removal       | Not started        | Delete `firestore.rules`/`firebase.json`, drop the `firebase` dependency                        |
-| 10  | Final verification + migration report | Not started        | Full test run, actual counts, commit hashes                                                     |
+| #   | Phase                                 | Status             | Deliverable                                                                                                |
+| --- | ------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------- |
+| 1   | Project + local setup                 | **Done** (adapted) | `supabase/migrations/`, env contract documented in `docs/SUPABASE_SETUP.md`. No Docker used.               |
+| 2   | Schema + migrations                   | **Done**           | Five migration files; applied and verified on every test run                                               |
+| 3   | RLS policies + **executed** tests     | **Done**           | 74 executed assertions, plus mutation-checked so they fail when a policy is broken                         |
+| 4   | Google-only auth                      | **Code complete**  | Supabase is the SOLE provider; Firebase Auth deleted. **Real-browser sign-in NOT verified — owner action** |
+| 5   | Profiles + quiz persistence           | Not started        | Owner CRUD, replaces the prototype alert                                                                   |
+| 6   | Secure sharing + server-side grading  | Not started        | Edge Functions implementing `docs/SHARE_LINK_API.md`                                                       |
+| 7   | Storage (conditional)                 | Not needed         | Owner decided against persistent storage                                                                   |
+| 8   | Server-side AI + quotas               | Not started        | Edge Function behind `AIProvider`; server-enforced quotas                                                  |
+| 9   | Docs cleanup + Firebase removal       | Not started        | Delete `firestore.rules`/`firebase.json`, drop the `firebase` dependency                                   |
+| 10  | Final verification + migration report | Not started        | Full test run, actual counts, commit hashes                                                                |
 
 Phase 4 is the first that changes user-visible behaviour. Phases 1–3 are
 complete and touched no application code.
+
+**Phase 4 outcome:** Supabase is the sole auth provider in code and Firebase
+Auth is deleted. The phase is **not** signed off, because a real Google
+sign-in has never been executed and the OAuth client secret rotation is
+unverified. See `NEXT_STEPS.md`.
 
 ---
 

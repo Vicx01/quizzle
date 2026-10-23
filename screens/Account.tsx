@@ -4,7 +4,7 @@
  * Shows who is signed in and provides the only way out: Sign out.
  *
  * Presentational by design. The app shell owns auth state and passes the
- * handler, so this screen is testable without touching Firebase.
+ * handler, so this screen is testable without touching the auth provider.
  *
  * Sign-out failures are shown inline and leave the user signed in. Swallowing
  * the error would strand them in an account they cannot leave; optimistically

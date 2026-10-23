@@ -1,8 +1,8 @@
 # Quizzle — Next Steps
 
-**Current phase:** Supabase migration — Phase 4 (Google-only Supabase Auth) is IMPLEMENTED and AWAITING OWNER VERIFICATION.
+**Current phase:** Supabase migration — Phase 4 (Google-only Supabase Auth) is **CODE COMPLETE**. Supabase is the sole authentication provider; Firebase Auth has been deleted. **A real-browser Google sign-in remains outstanding.**
 
-**Status:** The database foundation is applied to the hosted project and verified on it. **Supabase authentication is now implemented but NOT yet run.** Google OAuth is enabled on the project; the app can sign in through Supabase by setting `EXPO_PUBLIC_AUTH_PROVIDER=supabase`, with Firebase remaining the default until the owner confirms Supabase sign-in works.
+**Status:** The database foundation (Phases 1–3) is applied to the hosted project and verified on it. Supabase Auth is the only auth path in the code — the `EXPO_PUBLIC_AUTH_PROVIDER` switch is gone, `services/firebase.ts` is deleted, and no application code references Firebase. Every automated check passes. **A real Google OAuth flow has never been executed**, because this sandbox has no network path to Google or to the Supabase host.
 
 **Last updated:** 2026-10-23
 
@@ -10,124 +10,132 @@
 
 ---
 
-## Current status — Supabase database foundation COMPLETE (2026-10-23)
+## Current status — Supabase Auth is the sole provider (2026-10-23)
 
-Phase 1 of the Firebase → Supabase migration is done and deployed. It is
-**database-only**: no application code changed, and Firebase still handles
-sign-in.
+### What changed
 
-### What was built
+- `services/auth.ts` is **Supabase-only**. No dispatcher, no provider branching,
+  no `EXPO_PUBLIC_AUTH_PROVIDER`.
+- `services/firebase.ts` and `services/__tests__/firebase.test.ts` **deleted**.
+- `AppUser` lost its now-meaningless `provider` field; the `AuthProvider` union
+  type is gone. Screens use `{ id, email, displayName, photoURL }`.
+- User-facing copy updated: the setup panel reads "Finish Supabase setup" and
+  points at the Supabase Dashboard, not the Firebase Console.
+- `docs/FIREBASE_SETUP.md` is now a superseded stub.
 
-- Five migrations in `supabase/migrations/` creating nine tables, RLS policies,
-  retention eligibility, share-link resolution and soft delete.
-- `tests/database/` — 74 executed tests (`npm run test:db`) running the real
-  migrations against real PostgreSQL (PGlite, WebAssembly). **No Docker, no
-  local Supabase stack, no credentials, no network.**
-- `docs/SUPABASE_SETUP.md` — the dashboard steps only you can perform.
+### Google-only is preserved
 
-### Project
+Verified on the hosted project through the API: `external_google_enabled: true`,
+client ID and secret set, `external_google_skip_nonce_check: false` (nonce check
+**on**, the more secure setting), `external_email_enabled: false` and
+`external_phone_enabled: false`. Google is the only way in.
 
-`quizzle` — ref `ppswtryoescehrytxvsh`, region `eu-west-1`, PostgreSQL 17.11,
-status `ACTIVE_HEALTHY`. Project URL
-`https://ppswtryoescehrytxvsh.supabase.co`.
+### Security checks that passed
 
-### Security model in one paragraph
+- RLS re-verified live: **9/9 tables** with `rowsecurity = true` and unchanged
+  policy counts.
+- Bundle scan of the production web build: **`firebase` — 0 occurrences**,
+  `AIzaSy` — 0, `EXPO_PUBLIC_FIREBASE_*` — 0. The only client env vars
+  referenced anywhere in source are `EXPO_PUBLIC_SUPABASE_URL` and
+  `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
+- The `sb_secret_` / `service_role` strings in the bundle are the guard's own
+  literals (in `looksLikeServiceRoleKey` and in the SDK's key check), not a key.
+- `getSupabaseConfigStatus()` still refuses to report healthy if the anon slot
+  holds a service-role key.
 
-RLS is enabled on all nine tables and defaults to deny. `usage_counters` and
-`generation_log` have **no client policies at all**. Correct answers live in a
-physically separate table (`question_answer_keys`) from the question text, so
-the future shared-quiz function cannot leak them with a careless `select *`.
-Share tokens are stored only as SHA-256 hashes. Attempts are written
-exclusively by server code, so a client can never supply its own score.
-Anonymous attempts are supported with `user_id = null`.
+### OPEN — the one blocking security action
 
-### Test results (actual)
+**The Google OAuth client secret may not have been rotated after an earlier
+exposure.** The Supabase API returns the current secret value but exposes no
+creation or rotation timestamp, so rotation **cannot be verified from here**.
 
-| Suite                        | Count | Result                             |
-| ---------------------------- | ----- | ---------------------------------- |
-| Database (`npm run test:db`) | 74    | **74 passed, 0 failed, 0 skipped** |
-| App (`npm test`)             | 149   | 149 passed, 14 suites              |
-| Typecheck                    | —     | clean                              |
-| Lint                         | —     | 0 errors, 7 pre-existing warnings  |
-| Prettier                     | —     | clean                              |
+**Action required (owner, ~2 minutes):**
 
-The database suite is **mutation-checked**: breaking any of six controls
-(dropping RLS, removing the ownership check, exposing answer keys, letting
-clients edit counters or access counts, or removing the 30-day share-link
-limit) makes it fail. The tests are not vacuous.
+1. Google Cloud Console → APIs & Services → Credentials → the OAuth client →
+   **rotate the client secret**.
+2. Supabase Dashboard → Authentication → Providers → Google → paste the **new**
+   secret and save.
 
-### Verified on the hosted project (2026-10-23)
+Until that is done, the live OAuth migration should not be considered complete,
+regardless of how the code reads.
 
-All five migrations were applied to `ppswtryoescehrytxvsh` and the security
-behaviour was then tested **on that live database**. Every check ran inside a
-transaction that was rolled back; a follow-up count confirmed 0 users and 0
-rows, so nothing persisted.
+### OPEN — real-browser verification
 
-Confirmed live: RLS enabled on all nine tables with the expected policy counts;
-cross-user isolation; anonymous denial; `usage_counters` invisible to clients;
-clients unable to reset their own access counts or quotas; a client attempt to
-insert a quiz score **rejected with `42501`**; share tokens resolving correctly
-when valid and returning nothing when expired, revoked or unknown; access
-counts incrementing 1 then 2; and `soft_delete_quiz` returning `true` for the
-owner and `false` otherwise.
+No Google sign-in has ever run. The sandbox cannot reach
+`accounts.google.com` **or** `ppswtryoescehrytxvsh.supabase.co` (both return
+connection failures), so no interactive OAuth flow and no live PostgREST check
+is possible here. Passing unit tests and a clean bundle build are **not**
+evidence that the live flow works.
 
-The profile-bootstrap trigger also fires correctly against the real GoTrue
-`auth.users` schema — a behaviour the local engine could not prove, because it
-only emulates that schema.
-
-Full results are tabulated in `docs/SUPABASE_SETUP.md` §10.
-
-### Supabase auth — code complete, never executed
-
-Google OAuth is enabled on the hosted project (verified through the API:
-`external_google_enabled: true`, client ID and secret set, nonce check on).
-
-What was built:
-
-- `services/supabase.ts` — client construction and configuration diagnostics.
-- `services/authSupabase.ts` — Google OAuth, session observation, sign-out,
-  and scrubbing OAuth parameters from the URL after a redirect.
-- `services/auth.ts` — now a **provider dispatcher** rather than Firebase code.
-- A provider-neutral `AppUser` type, so no screen depends on either vendor's
-  user shape.
-
-**The migration switch is `EXPO_PUBLIC_AUTH_PROVIDER`.** Firebase is the
-default; only the exact value `supabase` switches to Supabase, and any other
-value (including a typo) falls back to Firebase. That keeps a working login at
-all times and prevents two providers from being live at once.
-
-### How you verify it
+**Action required (owner):**
 
 1. Add to your local `.env`:
    ```
    EXPO_PUBLIC_SUPABASE_URL=https://ppswtryoescehrytxvsh.supabase.co
    EXPO_PUBLIC_SUPABASE_ANON_KEY=<publishable key>
-   EXPO_PUBLIC_AUTH_PROVIDER=supabase
    ```
-2. Restart the dev server (env vars are inlined at build time) and open the app
-   in a real browser tab — not the embedded preview, which Google blocks.
-3. Sign in with Google. If it fails, the error message names the fix.
-
-If the current host is not on the redirect allow-list, sign-in will be rejected
-and the message will tell you to add it under Authentication → URL
-Configuration → Redirect URLs. The list currently covers
-`http://localhost:8081`, `http://localhost:19006` and `https://8081-*.e2b.app`;
-**the sandbox host changes between sessions, so a new one must be added each
-time.**
-
-### What is NOT verified
-
-- **Supabase Google sign-in has never been executed.** The sandbox has no
-  network path to Google, so no OAuth flow can run here. Only the owner can
-  confirm it. Everything about the Supabase auth path is unproven until then.
-- **PostgREST behaviour.** The hosted checks ran as SQL roles
-  (`anon` / `authenticated` / `service_role`). They do not exercise PostgREST's
-  request handling, so the app's actual client queries are still unproven.
-- The 45 Firestore rules tests remain **written and unexecuted**.
+2. Restart the dev server (`EXPO_PUBLIC_*` is inlined at build time) and open
+   the app in a **real browser tab** — Google blocks embedded previews.
+3. Confirm: sign-in works, the Account screen shows your name/email/photo,
+   sign-out returns to the sign-in screen, and a page refresh keeps you signed
+   in.
+4. If the current host is rejected, add it under Authentication → URL
+   Configuration → Redirect URLs. The list currently covers
+   `http://localhost:8081`, `http://localhost:19006` and
+   `https://8081-*.e2b.app`; **the sandbox host changes between sessions**, so a
+   new one must be added each time.
 
 ---
 
-## Previous status — Google sign-in VERIFIED (2026-10-23)
+## Next phase — Phase 5: Profiles + quiz persistence
+
+Per `docs/SUPABASE_MIGRATION.md` §13, the phase after authentication is:
+
+> **5 | Profiles + quiz persistence | Not started | Owner CRUD, replaces the
+> prototype alert**
+
+This is next because it is the first phase that makes the deployed schema do
+work for the user: the `profiles`, `quizzes` and `questions` tables exist and are
+protected by RLS, but nothing writes to them yet — the Generate screen still
+shows a prototype alert. Authentication had to land first, because every one of
+those tables is scoped by `auth.uid()`.
+
+**Explicitly out of scope for Phase 5:** AI provider integration, document
+processing, and Storage. Those are Phases 7–8 and remain deferred.
+
+---
+
+## Verification results (actual, this phase)
+
+| Check               | Command                            | Result                             |
+| ------------------- | ---------------------------------- | ---------------------------------- |
+| App tests           | `npx jest`                         | **150 passed** / 14 suites         |
+| Database tests      | `npm run test:db`                  | **74 passed**, 0 failed, 0 skipped |
+| Typecheck           | `./node_modules/.bin/tsc --noEmit` | clean                              |
+| Lint                | `npx eslint . --ext .ts,.tsx`      | 0 errors, 7 pre-existing warnings  |
+| Prettier            | `npx prettier --check .`           | clean                              |
+| Web bundle          | `npx expo export --platform web`   | **271 modules, 739 KB**            |
+| Live RLS            | MCP `execute_query`                | 9/9 tables RLS-enabled             |
+| Real Google sign-in | —                                  | **NOT VERIFIED — owner action**    |
+
+The bundle shrank from 287 modules / 1.5 MB to **271 modules / 739 KB** —
+removing Firebase Auth roughly halved it.
+
+---
+
+## Previous status — Google sign-in VERIFIED (2026-10-23) — SUPERSEDED
+
+> ## ⚠️ Historical section — do not read as current
+>
+> Everything below this banner describes the **Firebase** sign-in flow, which
+> **no longer exists** in the codebase. Firebase Auth was removed on 2026-10-23
+> and replaced by Supabase Auth (Google only).
+>
+> The verification recorded here — that the owner completed a live Google
+> sign-in — applied to **Firebase**, and **does not carry over to Supabase**.
+> Supabase sign-in is a different integration with different redirect handling
+> and has never been executed. See the "OPEN — real-browser verification"
+> section at the top of this file for what the owner needs to do now.
 
 **The owner ran the flow and confirmed a successful Google sign-in.** This was
 the last open blocker from Phase 3: authentication is no longer a question mark,
@@ -366,11 +374,15 @@ Two related bugs were fixed at the same time:
 
 All 36 contrast assertions now pass as real requirements, not pins.
 
-### 2. Firebase credentials — BLOCKING
+### 2. Supabase credentials + a real sign-in — BLOCKING
 
-**This is the only thing preventing sign-in.** Supply the four
-`EXPO_PUBLIC_FIREBASE_*` values listed above and complete the Console steps in
-`docs/FIREBASE_SETUP.md`. Google sign-in remains unverified until then.
+**This is the only thing preventing a verified sign-in.** Supply
+`EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` in your `.env`,
+then complete the browser verification described in "OPEN — real-browser
+verification" above. Google sign-in through Supabase remains unverified until
+then.
+
+There are no Firebase variables any more; those were removed with Firebase Auth.
 
 ### ~~3. Navigation: keep custom shell or migrate to Expo Router?~~ — SETTLED
 
@@ -384,22 +396,36 @@ concrete requirement.
 
 ## Not verified (explicitly)
 
-- **Visual rendering** — no browser in this sandbox; bundle compiles but appearance is unconfirmed.
+- **Supabase Google sign-in** — **NEVER EXECUTED**. The sandbox cannot reach
+  `accounts.google.com` or the Supabase host. Unit tests and a clean bundle are
+  not evidence that the live flow works. Owner action required.
+- **Visual rendering** — no browser in this sandbox; bundle compiles but
+  appearance is unconfirmed.
 - **Native iOS/Android** — never built or run. No native support is claimed.
-- **Firebase Auth** — **VERIFIED**: the owner completed a live Google sign-in.
-- **Firestore** — initialised but unused; **no security rules exist**, so there is
-  no data-access control.
+- **PostgREST request behaviour** — the live database checks ran as SQL roles,
+  not through PostgREST, and the host is unreachable from here. The app's actual
+  client queries are unproven.
+- **Firestore rules** — 45 tests written, never executed. Superseded by
+  Supabase RLS; no application code uses Firestore.
 - **AI provider access** — no keys, no live calls.
 
 ---
 
-## Phase 4 acceptance criteria (next phase)
+> **Phase numbering note.** This section predates the Supabase migration plan
+> and uses an older numbering in which "Phase 4" meant accessibility review. In
+> `docs/SUPABASE_MIGRATION.md` §13 — the current plan — **Phase 4 is Supabase
+> authentication (now code-complete)** and **Phase 5 is profiles + quiz
+> persistence**. The list below is retained because the accessibility gate it
+> describes is still genuinely outstanding and still blocks AI work; only the
+> heading was stale.
+
+## Accessibility and visual review — outstanding gate before AI work
 
 **Scope note:** AI-provider integration is **deferred by owner instruction** until
-accessibility and visual review are complete. Phase 4 is therefore split: 4A
-(accessibility + visual sign-off) must finish before 4B (backend/AI) starts.
+accessibility and visual review are complete. This gate must finish before any
+backend/AI phase starts.
 
-### 4A — Accessibility and visual review (do this first)
+### Accessibility and visual review (do this first)
 
 1. Owner reviews the live preview in **both themes at mobile and desktop widths**
    and confirms the new control borders (`#8F8F8F` / `#666666`) look right — they

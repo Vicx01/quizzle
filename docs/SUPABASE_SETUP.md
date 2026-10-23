@@ -42,9 +42,9 @@ configured; what remains is wiring the app to use it.
 
 ### What still needs you
 
-**Add the credentials to your local `.env`** (see §3) and set
-`EXPO_PUBLIC_AUTH_PROVIDER=supabase` when you want to try Supabase sign-in.
-Until then the app keeps using Firebase.
+**Add the credentials to your local `.env`** (see §3). Supabase is now the sole
+auth provider, so there is no switch to flip — once those two variables are set,
+the app signs in through Supabase.
 
 The dashboard steps are kept below for reference and for any future project.
 
@@ -119,24 +119,21 @@ app, and only one of those is safe to ship to a browser.
 
 ### Variables the app will eventually need
 
-You manage `.env` yourself; this project does not ship a `.env.example`. When
-the auth phase begins, the app will read variables along these lines:
+You manage `.env` yourself; this project does not ship a `.env.example`. The app
+reads exactly two client variables:
 
 ```
 EXPO_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon or publishable key>
-
-# Which backend serves sign-in. Omit it (or set `firebase`) to keep the
-# current, verified Firebase login. Set to `supabase` to use Supabase.
-EXPO_PUBLIC_AUTH_PROVIDER=supabase
 ```
 
-**`EXPO_PUBLIC_AUTH_PROVIDER` is the migration switch.** Firebase stays the
-default so the app never loses a working login while Supabase is being proven.
-Only the exact value `supabase` selects Supabase — a typo falls back to
-Firebase rather than half-enabling a backend with no credentials.
+**Only the anon / publishable key belongs in the client.** The service-role key
+bypasses Row Level Security on every table. `getSupabaseConfigStatus()` detects
+it — by the `sb_secret_` prefix, and by decoding the JWT `role` claim for legacy
+keys — and refuses to report a healthy configuration. A misconfigured app shows
+a "Finish Supabase setup" checklist naming the offending variable rather than a
+sign-in button that silently fails.
 
-The exact names will be confirmed when `services/supabase.ts` is written.
 Supabase Edge Functions receive `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
 `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_DB_URL` automatically — you do not
 set those.

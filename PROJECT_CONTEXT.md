@@ -1,7 +1,7 @@
 # Quizzle — Project Context
 
-**Status:** Phase 3 — application foundation complete and verified, WCAG AA contrast resolved. Architecture implemented for the frontend; backend/AI not implemented. Awaiting accessibility/visual review before AI-provider integration.  
-**Last updated:** 2026-10-22  
+**Status:** Database layer migrated to Supabase PostgreSQL (deployed and verified). **Supabase Auth is the sole authentication provider — Firebase Auth has been removed.** Architecture implemented for the frontend; backend/AI not implemented. Awaiting accessibility/visual review before AI-provider integration.
+**Last updated:** 2026-10-23
 **Branch:** `arena/9131a5e6-quizzle`
 
 ## 1. Product overview
@@ -67,10 +67,10 @@ are **not** implemented — see §10.
 
 - Expo + React Native + React Native Web + TypeScript
 - Expo Router for navigation
-- Firebase Authentication with Google sign-in
-- Firestore for quiz definitions, attempts, ownership, sharing, and metadata
-- Server-side API layer (Firebase Functions recommended; Railway/Render alternative) for AI calls and privileged operations
-- Firebase Hosting or Vercel for web deployment
+- **Supabase Authentication with Google sign-in** (Firebase Auth removed 2026-10-23)
+- **Supabase PostgreSQL** for quiz definitions, attempts, ownership, sharing, and metadata (Firestore superseded)
+- Server-side API layer (Supabase Edge Functions recommended) for AI calls and privileged operations
+- Vercel or Supabase Hosting for web deployment
 - EAS Build for native builds (later)
 
 **Design system:** Approved with conditions (see `DESIGN_BRIEF.md` §15). Prototype the Generate screen first; do not implement all nine screens until the owner reviews the prototype.
@@ -135,17 +135,19 @@ Do not finalise the design system or build all screens until the owner approves 
 - Project structure, TypeScript strict mode, ESLint, Prettier and Jest are configured.
 - Design tokens and reusable components are implemented (light + dark).
 - Sign-in screen and app shell with tab navigation are implemented.
-- **Google sign-in is implemented and VERIFIED** — the owner completed a live
-  sign-in against the real Firebase project.
+- **Supabase Auth is the sole authentication provider.** Firebase Auth and
+  `services/firebase.ts` have been deleted; the `EXPO_PUBLIC_AUTH_PROVIDER`
+  switch is gone. The client bundle contains **zero** Firebase references.
 - **Account screen** shows the signed-in identity (name, email, profile photo)
-  and is the only place Sign out is offered; sign-out is wired to Firebase Auth.
+  and is the only place Sign out is offered; sign-out is wired to Supabase.
 - Loading / empty / error / offline states are implemented.
 - Checks: typecheck clean, lint 0 errors, format clean, **149 tests passing**.
 - Web bundle compiles (271 modules, HTTP 200).
 
-**Deliberately NOT implemented:** Firestore (initialised but unused), Firestore
-security rules, server-side API layer, and AI provider integration. No backend
-functionality is claimed, and **no user data is stored**.
+**Deliberately NOT implemented:** server-side API layer and AI provider
+integration. No generation functionality is claimed. The database schema and its
+Row Level Security policies **are** implemented, deployed and covered by 74
+executed tests; no user data has been written to it.
 
 **Owner condition 1 (WCAG AA contrast) has been verified and RESOLVED.** Two
 deviations were found in the approved palette and fixed by splitting the
@@ -164,11 +166,12 @@ deviations are not pinned.
 **Not verified:** visual rendering (no browser in the sandbox), native iOS/Android
 (no build or run), AI provider access (no keys).
 
-Firebase Auth **is** verified. Firestore is not: `firestore.rules` (v3) is written
-and statically reviewed but has **never been executed** — the emulator cannot run
-in this sandbox and neither Java-free alternative implements security rules.
-45 rules tests are written and **unrun**. Nothing is written to Firestore and no
-rules are deployed.
+Supabase Row Level Security **is** implemented, deployed and verified: 74
+executed database tests plus a live audit on the hosted project. Firestore is a
+superseded artefact: `firestore.rules` (v3) is written and statically reviewed
+but has **never been executed** — the emulator cannot run in this sandbox and
+neither Java-free alternative implements security rules. 45 rules tests are
+written and **unrun**.**No application code uses Firestore.**
 
 **Shared quizzes are server-mediated, not a direct read.** `firestore.rules` v3
 gives no client read access to a quiz it does not own, because the quiz document
@@ -211,25 +214,30 @@ authentication is untouched and still working.** Local migration files were
 renamed to the versions Supabase assigned, so `supabase db push` treats them as
 already applied.
 
-### Supabase authentication — implemented, NOT yet verified (2026-10-23)
+### Supabase authentication — sole provider (2026-10-23)
 
-Google OAuth is enabled on the hosted project (confirmed through the API, with
-the nonce check left on). The app-side work is done:
+**Supabase Auth is the only authentication path in the code.** The migration
+switch has been removed: there is no configuration in which Firebase Auth runs.
 
-- `@supabase/supabase-js` installed; `services/supabase.ts` builds the client
-  and reports configuration health.
-- `services/authSupabase.ts` implements Google OAuth, session observation,
-  sign-out and URL cleanup.
-- `services/auth.ts` became a **provider dispatcher**. `EXPO_PUBLIC_AUTH_PROVIDER`
-  selects the backend; **Firebase remains the default**, and only the exact
-  value `supabase` switches it. A typo falls back to Firebase rather than
-  half-enabling a backend with no credentials.
-- Screens now consume a provider-neutral `AppUser` type instead of Firebase's
-  `User`, so no screen knows which backend is live.
+- `services/auth.ts` is Supabase-only — no dispatcher, no provider branching.
+- `services/authSupabase.ts` holds the OAuth mechanics.
+- `services/firebase.ts` and its test suite are **deleted**.
+- Screens consume the `AppUser` model (`id`, `email`, `displayName`,
+  `photoURL`), so no screen depends on a vendor user type.
+- Google remains the **only** sign-in method: email and phone providers are
+  disabled on the hosted project.
 
-**This is unverified end to end.** No OAuth flow has been run: the sandbox has
-no network path to Google, so only the owner can confirm a real sign-in. The
-switched-off default means that until they do, nothing has changed for users.
+**Verification status — read carefully.** Google OAuth is correctly configured
+on the hosted project (`external_google_enabled: true`, client ID and secret
+set, nonce check on, email and phone disabled). Every automated check passes.
+But **no real Google sign-in has ever been executed**: this sandbox has no
+network path to Google or to the Supabase host, so the interactive OAuth flow
+cannot run here. A successful bundle build and passing unit tests are _not_
+evidence that the live flow works. That confirmation requires the owner to sign
+in from a real browser.
+
+**One security action remains open:** the Google OAuth client secret cannot be
+shown to have been rotated after an earlier exposure. See `NEXT_STEPS.md`.
 
 See `docs/SUPABASE_MIGRATION.md` (plan) and `docs/SUPABASE_SETUP.md`
 (project setup) for detail.
@@ -240,8 +248,12 @@ See `NEXT_STEPS.md` for the Phase 4 acceptance criteria and the blocking decisio
 
 - ~~**WCAG AA contrast deviations**~~ — RESOLVED (2026-10-22); see DESIGN_BRIEF.md §16.
 - **Visual review of the new border colours** — the darker control borders (`#8F8F8F` / `#666666`) and the now-visible toggle track have not been seen in a browser. Owner review in both themes is the main remaining gap.
-- ~~**Firebase project**~~ — RESOLVED (2026-10-23): Google sign-in is verified end to
-  end. Firestore security rules are the outstanding Firebase work.
+- **Retire the Firestore rules suite?** `firestore.rules` and its 45 unrun tests
+  predate the Supabase migration and no application code uses Firestore. The
+  `firebase` package remains installed _only_ because that suite imports
+  `firebase/firestore`. Owner decision.
+- **Rotate the Google OAuth client secret** — an earlier value was exposed;
+  rotation could not be verified through the API. Owner action.
 - **Navigation** — the custom tab shell is kept. `expo-router` stays installed but unused; do not migrate without a concrete requirement.
 - Final owner approval of `ARCHITECTURE.md` (stack, data model, security, provider order, deployment).
 - ~~**Persistent document storage**~~ — RESOLVED (2026-10-23): not needed. Documents are processed in memory and discarded; no Storage bucket is created.

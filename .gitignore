@@ -38,7 +38,7 @@ yarn-error.*
 #
 # `.env` is the single environment file and is created manually. There is no
 # committed template (`.env.example` was removed on the owner's request) — see
-# docs/FIREBASE_SETUP.md for the values to put in it. Never commit real
+# docs/SUPABASE_SETUP.md for the values to put in it. Never commit real
 # credentials.
 .env
 .env.*

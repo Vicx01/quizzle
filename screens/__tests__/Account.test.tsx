@@ -2,7 +2,7 @@
  * Quizzle — Account screen tests.
  *
  * The screen is presentational: the shell owns auth state and injects the
- * handler, so these tests never touch Firebase.
+ * handler, so these tests never touch the auth provider.
  */
 
 import React from 'react';
@@ -21,7 +21,6 @@ function makeUser(overrides: Partial<AppUser> = {}): AppUser {
     displayName: 'Ada Lovelace',
     email: 'ada@example.com',
     photoURL: null,
-    provider: 'firebase',
     ...overrides,
   };
 }
@@ -96,8 +95,8 @@ describe('AccountScreen — sign out', () => {
   });
 
   it('shows a sign-out error so the user knows it did not happen', () => {
-    const { getByText } = renderAccount({ error: 'Network error while contacting Firebase.' });
-    expect(getByText('Network error while contacting Firebase.')).toBeTruthy();
+    const { getByText } = renderAccount({ error: 'Network error while contacting Supabase.' });
+    expect(getByText('Network error while contacting Supabase.')).toBeTruthy();
   });
 
   it('shows no error when there is none', () => {

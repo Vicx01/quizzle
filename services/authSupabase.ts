@@ -1,11 +1,10 @@
 /**
  * Quizzle — Supabase authentication (Google only).
  *
- * This module is deliberately separate from `services/auth.ts`. During the
- * migration both providers exist side by side: `services/auth.ts` is the
- * dispatcher that decides which one is active, and this file contains only
- * Supabase-specific behaviour so the Firebase path stays untouched and
- * unreviewed changes cannot leak into it.
+ * This module holds the Supabase-specific mechanics: mapping a Supabase user
+ * onto the app's `AppUser`, starting the Google OAuth flow, and cleaning the
+ * OAuth artefacts out of the URL afterwards. `services/auth.ts` is the public
+ * surface the rest of the app imports.
  *
  * Nothing here contacts the network at import time, so it is safe to import in
  * tests and in an app that has not been configured yet.
@@ -31,7 +30,6 @@ export function toAppUser(user: User | null): AppUser | null {
     email: user.email ?? null,
     displayName: firstString(meta.full_name, meta.name, meta.preferred_username),
     photoURL: firstString(meta.avatar_url, meta.picture),
-    provider: 'supabase',
   };
 }
 
@@ -85,7 +83,7 @@ export async function signInWithGoogleSupabase(): Promise<boolean> {
     options: {
       redirectTo,
       // Forces account selection so a user already signed into Google can
-      // still choose which account to use, matching the Firebase behaviour.
+      // still choose which account to use.
       queryParams: { prompt: 'select_account' },
     },
   });

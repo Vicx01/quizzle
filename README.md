@@ -3,13 +3,13 @@
 AI-assisted quiz generator. React Native (Expo) app targeting web first, with
 iOS and Android planned.
 
-> **Status:** application foundation complete. **Google sign-in works** — verified
-> against the live Firebase project. See
-> [Firebase setup](docs/FIREBASE_SETUP.md).
+> **Status:** application foundation complete. The database layer has moved to
+> Supabase PostgreSQL, and **Supabase Auth (Google only) is the sole
+> authentication provider** — Firebase Auth has been removed. See
+> [Supabase setup](docs/SUPABASE_SETUP.md).
 >
-> Not yet done: sign-out is not wired to any UI, Firestore is unused, **no
-> Firestore security rules exist**, and the server-side API layer (which would
-> call an AI provider) is not implemented.
+> Not yet done: the server-side API layer (which would call an AI provider) is
+> not implemented, and no quiz generation or storage exists yet.
 
 ---
 
@@ -74,20 +74,20 @@ npm install --legacy-peer-deps
 ### Configure `.env`
 
 `npm run web` will start without it, but Google sign-in will show a
-**"Finish Firebase setup"** checklist naming whatever is missing.
+**"Finish Supabase setup"** checklist naming whatever is missing.
 
-Fill the four required values from **Firebase Console → Project settings →
-General → Your apps → SDK setup and configuration → Config**:
+Fill the two required values from **Supabase Dashboard → Project Settings →
+API**:
 
-| Variable                           | Example                           |
-| ---------------------------------- | --------------------------------- |
-| `EXPO_PUBLIC_FIREBASE_API_KEY`     | `AIza…`                           |
-| `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN` | `your-project-id.firebaseapp.com` |
-| `EXPO_PUBLIC_FIREBASE_PROJECT_ID`  | `your-project-id`                 |
-| `EXPO_PUBLIC_FIREBASE_APP_ID`      | `1:…:web:…`                       |
+| Variable                        | Example                             |
+| ------------------------------- | ----------------------------------- |
+| `EXPO_PUBLIC_SUPABASE_URL`      | `https://<project-ref>.supabase.co` |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | the **anon / publishable** key      |
 
-Two more are recommended: `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET` and
-`EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`.
+> **Only the anon (publishable) key belongs here.** The service-role key bypasses
+> Row Level Security on every table and must never be placed in an
+> `EXPO_PUBLIC_*` variable — the app checks for that mistake and refuses to
+> report a healthy configuration if it finds one.
 
 > `EXPO_PUBLIC_*` values are **inlined at build time**.
 > **Restart the dev server after editing `.env`** — changes are not hot-reloaded.
@@ -101,15 +101,18 @@ git check-ignore -v .env          # prints the matching .gitignore rule
 git ls-files | grep -i '^\.env'   # prints nothing
 ```
 
-You must also, in the Firebase Console:
+You must also, in the Supabase Dashboard:
 
-1. **Enable** Authentication → Sign-in method → **Google**
-2. Add your origin under Authentication → Settings → **Authorized domains**
-3. Complete the **OAuth consent screen** (Google Cloud) — an incomplete consent
-   screen is a common cause of a Google **403** on sign-in
+1. **Enable** Authentication → Providers → **Google** and set the OAuth client
+   ID and secret
+2. Add your origin under Authentication → URL Configuration → **Redirect URLs**
+3. Complete the **OAuth consent screen** (Google Cloud) and add
+   `https://<project-ref>.supabase.co/auth/v1/callback` to the Google client's
+   **Authorized redirect URIs** — an incomplete consent screen is a common cause
+   of a Google **403** on sign-in
 
 Full walkthrough, including the 403 troubleshooting guide:
-[docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md).
+[docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md).
 
 ---
 
@@ -135,10 +138,10 @@ Full walkthrough, including the 403 troubleshooting guide:
 ## Project layout
 
 ```
-App.tsx              App shell, Firebase auth state
+App.tsx              App shell, Supabase auth state
 screens/             SignIn, Generate, History/Share/Account placeholders
 components/          Shared UI
-services/            firebase.ts (config + diagnostics), auth.ts, storage
+services/            auth.ts, authSupabase.ts, supabase.ts, configStatus.ts
 theme/               Design tokens and ThemeContext
 hooks/               Shared hooks (e.g. useNetworkStatus)
 docs/                Setup guides
@@ -156,9 +159,9 @@ Deeper context: [ARCHITECTURE.md](ARCHITECTURE.md),
 **Sign-in shows a Google 403.** Usually means the app is inside an embedded
 iframe preview, or the OAuth consent screen is incomplete. Open the app in a
 normal browser tab first. See
-[docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md).
+[docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md).
 
-**"Finish Firebase setup" checklist.** One or more required variables are
+**"Finish Supabase setup" checklist.** One or more required variables are
 missing or still placeholders. Fix `.env` and **restart the server**.
 
 **Stale config after editing `.env`.** Same cause — `EXPO_PUBLIC_*` is inlined
@@ -200,14 +203,17 @@ or clone with `git clone --config core.autocrlf=false`.
 
 ## Security
 
-Firebase **web** config is public by design — it ships in every Firebase web
-app's client bundle and grants no access on its own. Access is enforced by
-Firestore security rules, the Authorized Domains allowlist, and (later) App
-Check.
+The Supabase **anon / publishable** key is public by design — it ships in the
+client bundle and grants no access on its own. Access is enforced by Row Level
+Security, which is enabled on every table, and by the redirect allowlist.
 
-Never put an AI provider key, a Firebase service-account key, or any server
-secret in `.env`. Those belong in the server-side API layer, which is not yet
+**Never put the Supabase service-role key in `.env`.** It bypasses Row Level
+Security on every table; the app detects it and refuses to report a healthy
+configuration. The same goes for an AI provider key, a database password, or any
+other server secret — those belong in the server-side API layer, which is not yet
 implemented.
 
-**Firestore security rules do not exist yet** — there is no data-access control
-until they are written.
+**Data access is controlled by Supabase Row Level Security.** RLS is enabled on
+all nine tables, defaults to deny, and is covered by 74 executed tests
+(`npm run test:db`). Correct answers live in a table with no client-readable
+policy, so taking a quiz never grants read access to its answer key.

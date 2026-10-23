@@ -12,7 +12,7 @@
  * - Single Google-only sign-in. No email/password, no social alternatives.
  * - On success the auth state listener in the app shell redirects to Generate.
  * - Error: inline message below the button, mapped to an actionable cause.
- * - If Firebase is not configured, the sign-in button is REPLACED by an explicit
+ * - If Supabase is not configured, the sign-in button is REPLACED by an explicit
  *   setup checklist. We never render a button that cannot work.
  *
  * Responsive: Full-width card on mobile; centered max-width 400 px on desktop.
@@ -32,7 +32,7 @@ import {
 import { useColors } from '../theme/ThemeContext';
 import { space, fontSize, fontWeight, radius, isDesktopWidth } from '../theme/tokens';
 import { Button } from '../components/Button';
-import type { ConfigProblem, ConfigStatus } from '../services/firebase';
+import type { ConfigProblem, ConfigStatus } from '../services/configStatus';
 
 interface SignInScreenProps {
   onSignIn: () => void;
@@ -44,7 +44,7 @@ interface SignInScreenProps {
   configStatus?: ConfigStatus | null;
   /**
    * Current browser origin. Shown on screen so the value can be copied into
-   * Firebase's Authorized Domains without reading the address bar — which is
+   * Supabase's Redirect URLs without reading the address bar — which is
    * not possible when the app runs inside an embedded preview.
    */
   origin?: string | null;
@@ -115,7 +115,7 @@ export function SignInScreen({
 }
 
 /**
- * Shown when Firebase is not configured. Lists exactly which variables are
+ * Shown when Supabase is not configured. Lists exactly which variables are
  * missing and what to do, so nobody is left at a sign-in button that silently
  * fails.
  */
@@ -124,10 +124,10 @@ function SetupChecklist({ problems }: { problems: ConfigProblem[] }) {
   const styles = getStyles(colors, false);
 
   return (
-    <View style={styles.setupPanel} accessibilityRole="alert" testID="firebase-setup-panel">
-      <Text style={styles.setupTitle}>Finish Firebase setup</Text>
+    <View style={styles.setupPanel} accessibilityRole="alert" testID="auth-setup-panel">
+      <Text style={styles.setupTitle}>Finish Supabase setup</Text>
       <Text style={styles.setupBody}>
-        Google sign-in needs Firebase credentials. These are missing or still placeholders:
+        Google sign-in needs Supabase credentials. These are missing or still placeholders:
       </Text>
 
       {problems.map(p => (
@@ -140,11 +140,11 @@ function SetupChecklist({ problems }: { problems: ConfigProblem[] }) {
 
       <Text style={styles.setupBody}>
         Create <Text style={styles.setupCode}>.env</Text> in the project root with the values from
-        Firebase Console → Project settings → Your apps → SDK setup and configuration, then{' '}
+        Supabase Dashboard → Project Settings → API, then{' '}
         <Text style={styles.setupBold}>restart the dev server</Text>.
       </Text>
 
-      <Text style={styles.setupHint}>Setup steps: docs/FIREBASE_SETUP.md</Text>
+      <Text style={styles.setupHint}>Setup steps: docs/SUPABASE_SETUP.md</Text>
     </View>
   );
 }
@@ -158,7 +158,7 @@ function SetupChecklist({ problems }: { problems: ConfigProblem[] }) {
  *
  * 1. Being framed — Google refuses to render its consent pages inside a frame
  *    and popups are commonly blocked there, so sign-in cannot complete.
- * 2. The current origin — needed verbatim for Firebase's Authorized Domains
+ * 2. The current origin — needed verbatim for Supabase's Redirect URLs
  *    allowlist, but otherwise only visible in the URL bar.
  */
 function SignInDiagnostics({ origin, embedded }: { origin: string | null; embedded: boolean }) {
@@ -187,7 +187,7 @@ function SignInDiagnostics({ origin, embedded }: { origin: string | null; embedd
         <>
           <Text style={styles.diagText}>
             {
-              'This app origin — add it to Firebase Console → Authentication → Settings → Authorized domains:'
+              'This app origin — add it to Supabase Dashboard → Authentication → URL Configuration → Redirect URLs:'
             }
           </Text>
           <Text style={styles.diagOrigin} accessibilityRole="text">

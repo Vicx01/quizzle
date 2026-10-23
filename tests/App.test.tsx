@@ -1,7 +1,7 @@
 /**
  * Quizzle — app shell auth-state transition tests.
  *
- * These exercise the shell, not Firebase. `services/auth` is mocked so the
+ * These exercise the shell, not the auth provider. `services/auth` is mocked so the
  * tests can drive `onAuthStateChanged` directly and assert the important
  * property: when the session ends, the protected screens go away.
  *
@@ -30,10 +30,6 @@ jest.mock('../services/auth', () => ({
   getAuthConfigStatus: jest.fn(() => ({ ok: true, errors: [], warnings: [] })),
 }));
 
-jest.mock('../services/firebase', () => ({
-  getFirebaseConfigStatus: () => ({ ok: true, errors: [], warnings: [] }),
-}));
-
 const mockOnAuth = onAuthStateChanged as jest.Mock;
 const mockSignOut = signOut as jest.Mock;
 
@@ -42,7 +38,6 @@ const USER = {
   displayName: 'Ada Lovelace',
   email: 'ada@example.com',
   photoURL: null,
-  provider: 'firebase',
 };
 
 /** The most recently registered auth listener (one per render). */
@@ -107,7 +102,7 @@ describe('App — auth state transitions', () => {
 
     expect(mockSignOut).toHaveBeenCalledTimes(1);
 
-    // Firebase's listener reports the session ended.
+    // The auth listener reports the session ended.
     await act(async () => {
       authListener()(null);
     });

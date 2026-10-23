@@ -83,8 +83,8 @@ function isValidSupabaseUrl(value: string): boolean {
 /**
  * Full configuration diagnostic for Supabase.
  *
- * Returns the same shape as the Firebase equivalent so the sign-in screen can
- * render one checklist regardless of which provider is active.
+ * The sign-in screen renders this as a checklist, so a misconfigured deploy
+ * explains itself instead of failing silently.
  */
 export function getSupabaseConfigStatus(): ConfigStatus {
   const errors: ConfigProblem[] = [];

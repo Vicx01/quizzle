@@ -11,25 +11,26 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 /**
  * Which backend is currently serving sign-in.
  *
- * During the Firebase -> Supabase migration both exist. Firebase stays the
+ * Now that Supabase is the sole provider, this is the only identity shape. The
  * default until Supabase sign-in has been verified by the owner, so the app
  * never loses a working login while the replacement is being proven.
  */
-export type AuthProvider = 'firebase' | 'supabase';
-
 /**
- * Provider-neutral signed-in identity.
+ * Signed-in identity as the UI sees it.
  *
- * Screens depend on this rather than on Firebase's `User` or Supabase's `User`.
- * Without it, swapping providers would mean rewriting every screen that shows
- * who is signed in — and the two types disagree on basics like `uid` vs `id`.
+ * Screens depend on this rather than on Supabase's `User`, which keeps the
+ * vendor out of the presentation layer and means the shape of "who is signed
+ * in" is defined exactly once.
+ *
+ * It is not a straight copy of the Supabase user object: `displayName` and
+ * `photoURL` are resolved from Google's profile claims, which arrive under
+ * several different metadata keys.
  */
 export interface AppUser {
   id: string;
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
-  provider: AuthProvider;
 }
 
 // Quiz

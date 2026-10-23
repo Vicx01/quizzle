@@ -1279,3 +1279,111 @@ path to Google, so no OAuth flow can run here. The Supabase auth path is
 unproven until the owner runs it. This is safe precisely because Firebase is
 still the default — until `EXPO_PUBLIC_AUTH_PROVIDER=supabase` is set, user-facing
 behaviour is unchanged.
+
+## 2026-10-23 — Supabase becomes the sole authentication provider; Firebase Auth removed
+
+Supabase Auth is now the only authentication path in the codebase. The temporary
+provider switch introduced earlier the same day was removed, and Firebase Auth
+was deleted outright.
+
+### Removed
+
+- `services/firebase.ts` — Firebase app/Auth/Firestore initialisation and its
+  configuration diagnostics. Deleted, along with
+  `services/__tests__/firebase.test.ts`.
+- The `EXPO_PUBLIC_AUTH_PROVIDER` environment variable and the
+  `getAuthProvider()` dispatcher. There is no configuration in which Firebase
+  runs any more.
+- The `AuthProvider` union type and the `provider` field on `AppUser`. With one
+  provider the field carried no information.
+- All `EXPO_PUBLIC_FIREBASE_*` variables from the code and the docs. The user's
+  local `.env` was **not** touched.
+
+### Changed
+
+- `services/auth.ts` — rewritten Supabase-only. `onAuthStateChanged`,
+  `getCurrentUser`, `consumeRedirectResult`, `signInWithGoogle`, `signOut`,
+  `isAuthConfigured`, `getAuthConfigStatus`, `describeAuthError`,
+  `isCancellation` and `describeAuthErrorWithCode` all lost their Firebase
+  branches. Error mapping is now purely Supabase's.
+- `services/authSupabase.ts`, `services/configStatus.ts`,
+  `services/supabase.ts` — migration-era comments corrected.
+- `App.tsx`, `screens/Account.tsx`, `screens/SignIn.tsx` — comments and
+  user-facing copy. The setup panel now reads **"Finish Supabase setup"** and
+  points at the Supabase Dashboard (`Project Settings → API`, `Authentication →
+URL Configuration → Redirect URLs`) instead of the Firebase Console. Test ID
+  `firebase-setup-panel` → `auth-setup-panel`.
+- `docs/FIREBASE_SETUP.md` — reduced to a superseded stub. Auth instructions
+  removed; kept so historical references resolve.
+- `README.md` — setup and security sections rewritten for Supabase.
+
+### Deliberately kept
+
+- The `firebase` npm package. `tests/rules/firestore.rules.test.ts` imports
+  `firebase/firestore`, so the package is still genuinely used. **No application
+  code uses Firebase.** Whether to retire that suite — and the Firestore rules
+  the Supabase schema superseded — is left to the owner.
+
+### Tests
+
+| Check        | Before              | After                      |
+| ------------ | ------------------- | -------------------------- |
+| App (`jest`) | 168 / 15 suites     | **150 passed** / 14 suites |
+| Database     | 74                  | **74 passed**              |
+| Typecheck    | clean               | clean                      |
+| Lint         | 0 errors            | 0 errors, 7 warnings       |
+| Prettier     | clean               | clean                      |
+| Web bundle   | 287 modules, 1.5 MB | **271 modules, 739 KB**    |
+
+The suite count fell because `services/__tests__/firebase.test.ts` was deleted
+with the module it tested. `services/__tests__/auth.test.ts` was rewritten for
+Supabase error mapping and gained a **regression guard** asserting that Firebase
+codes (`auth/unauthorized-domain` and friends) now fall through to the generic
+message rather than pointing at a Firebase console.
+
+### Security verification
+
+- Live RLS re-checked through MCP: **9/9 tables** with `rowsecurity = true`,
+  policy counts unchanged (`profiles` 3, `questions` 4,
+  `question_answer_keys` 4, `quizzes` 4, `quiz_attempts` 2, `attempt_answers` 1,
+  `share_links` 1, `usage_counters` 0, `generation_log` 0).
+- Bundle scan of the production web build: `firebase` **0** occurrences,
+  `AIzaSy` **0**, `EXPO_PUBLIC_FIREBASE_*` **0**. The only client env vars in
+  source are `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
+- `sb_secret_` (2) and `service_role` (1) in the bundle were traced to guard
+  code — `looksLikeServiceRoleKey` and the SDK's own key check — not to a key.
+- The service-role guard still blocks a healthy config status when the anon slot
+  holds one.
+
+### Live project configuration (verified through the API)
+
+`external_google_enabled: true`, client ID and secret set,
+`external_google_skip_nonce_check: false` (nonce check on),
+`external_email_enabled: false`, `external_phone_enabled: false` — **Google is
+the only way in**. Site URL `http://localhost:8081`; redirect allow-list
+`http://localhost:8081/**`, `http://localhost:19006/**`,
+`https://8081-*.e2b.app/**`. `mailer_autoconfirm` was left alone.
+
+### NOT verified — do not read this entry as a working sign-in
+
+**No Google OAuth flow has ever been executed.** This sandbox has no network
+path to `accounts.google.com` _or_ to `ppswtryoescehrytxvsh.supabase.co`; both
+return connection failures. Therefore: no interactive sign-in, no OAuth callback
+check, and no live PostgREST request could be performed. Passing unit tests and a
+successful bundle build are **not** evidence that the live flow works.
+
+Two specific gaps:
+
+1. **The Google OAuth client secret could not be shown to have been rotated**
+   after an earlier exposure. The API returns the current value but no rotation
+   timestamp. Owner must rotate it in Google Cloud Console and update Supabase.
+2. **The Google client's authorized redirect URI** could not be checked — that
+   lives in Google Cloud Console. It must contain
+   `https://ppswtryoescehrytxvsh.supabase.co/auth/v1/callback`.
+
+### Remaining before the auth phase can be signed off
+
+1. Rotate the Google OAuth client secret and update it in Supabase.
+2. One successful real-browser Google sign-in (sign-in, session persistence
+   across refresh, sign-out, account display).
+3. Confirm a failed/cancelled sign-in leaves the app usable.

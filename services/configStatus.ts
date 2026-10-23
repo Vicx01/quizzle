@@ -1,9 +1,8 @@
 /**
  * Quizzle — shared configuration diagnostics.
  *
- * Both auth providers (Firebase, during migration, and Supabase) report their
- * configuration health through the same shape so the sign-in screen can render
- * a setup checklist without knowing which provider is active.
+ * Supabase Auth reports its configuration health through this shape so the
+ * sign-in screen can render a precise setup checklist.
  *
  * The app must never show a sign-in button that cannot work. Every provider
  * therefore answers "am I configured?" and, when not, names the exact
