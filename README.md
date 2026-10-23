@@ -37,19 +37,23 @@ git checkout arena/9131a5e6-quizzle
 npm install
 ```
 
-**3. Create your environment file.** Pick the command for your shell:
+**3. Create your environment file.** There is **no committed template** — you
+create `.env` in the project root yourself. Pick the command for your shell:
 
-| Shell                               | Command                       |
-| ----------------------------------- | ----------------------------- |
-| macOS / Linux / Git Bash on Windows | `cp .env.example .env`        |
-| Windows **Command Prompt (cmd)**    | `copy .env.example .env`      |
-| Windows **PowerShell**              | `Copy-Item .env.example .env` |
+| Shell                               | Command                        |
+| ----------------------------------- | ------------------------------ |
+| macOS / Linux / Git Bash on Windows | `touch .env`                   |
+| Windows **Command Prompt (cmd)**    | `type nul > .env`              |
+| Windows **PowerShell**              | `New-Item .env -ItemType File` |
 
 > `cp` does **not** exist in Windows Command Prompt or PowerShell — it is a
 > Unix command. Using it there produces
 > `'cp' is not recognized as an internal or external command`.
 > If you have Git for Windows installed, **Git Bash** accepts `cp` and all the
-> other commands in this README unchanged.
+> other Unix commands unchanged.
+
+Open `.env` in an editor and add the values listed under
+[Configure `.env`](#configure-env).
 
 Then:
 
@@ -88,8 +92,14 @@ Two more are recommended: `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET` and
 > `EXPO_PUBLIC_*` values are **inlined at build time**.
 > **Restart the dev server after editing `.env`** — changes are not hot-reloaded.
 
-`.env` is gitignored. Only `.env.example` (placeholders) is committed. Never
-commit real credentials.
+`.env` is gitignored and **no template is committed** (`.env.example` was removed
+at the owner's request). Never commit real credentials. Verify that `.env` is
+ignored and untracked:
+
+```bash
+git check-ignore -v .env          # prints the matching .gitignore rule
+git ls-files | grep -i '^\.env'   # prints nothing
+```
 
 You must also, in the Firebase Console:
 

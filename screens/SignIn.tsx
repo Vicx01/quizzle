@@ -139,9 +139,8 @@ function SetupChecklist({ problems }: { problems: ConfigProblem[] }) {
       ))}
 
       <Text style={styles.setupBody}>
-        Copy <Text style={styles.setupCode}>.env.example</Text> to{' '}
-        <Text style={styles.setupCode}>.env</Text>, fill in the values from Firebase Console →
-        Project settings → Your apps → SDK setup and configuration, then{' '}
+        Create <Text style={styles.setupCode}>.env</Text> in the project root with the values from
+        Firebase Console → Project settings → Your apps → SDK setup and configuration, then{' '}
         <Text style={styles.setupBold}>restart the dev server</Text>.
       </Text>
 

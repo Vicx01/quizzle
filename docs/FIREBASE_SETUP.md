@@ -35,7 +35,22 @@ without credentials.
 
 ## 2. Values you must supply
 
-Copy `.env.example` to `.env` and fill in four **required** values:
+There is **no committed template**. Create `.env` in the project root yourself
+and add the four **required** values below.
+
+Create the empty file first — pick your shell:
+
+| Shell                               | Command                        |
+| ----------------------------------- | ------------------------------ |
+| macOS / Linux / Git Bash on Windows | `touch .env`                   |
+| Windows **Command Prompt (cmd)**    | `type nul > .env`              |
+| Windows **PowerShell**              | `New-Item .env -ItemType File` |
+
+> On Windows, Notepad will silently save this as `.env.txt`, which is ignored
+> entirely. Check with `dir .env*` and rename with `ren .env.txt .env`. See the
+> Windows notes in the README.
+
+Then add these values:
 
 | Variable                           | Where to find it                                                                                   |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------- |
@@ -54,8 +69,9 @@ Two **recommended** (not blocking):
 Then **restart the dev server** — `EXPO_PUBLIC_*` values are inlined at build
 time and are not hot-reloaded.
 
-The app detects placeholders, so if you leave the `.env.example` values in place
-you will see "still has its placeholder value" rather than a cryptic Firebase error.
+The app detects unfilled values, so a `.env` still containing template text like
+`your-project-id` reports "still has its placeholder value" rather than a cryptic
+Firebase error.
 
 ---
 
@@ -167,10 +183,10 @@ Two things are missing in code today:
 
 ## 5. How to verify the flow (do this once config is supplied)
 
-Until someone completes these steps successfully, **sign-in must be described as
-unverified.**
+**Sign-in is verified** — the owner completed these steps successfully against
+the live project. Re-run them if you change the Firebase configuration.
 
-1. `cp .env.example .env` and fill in the four required values.
+1. Create `.env` in the project root with the four required values (see §2).
 2. Restart the dev server (`npm run web`).
 3. Load the app. You should see the normal "Sign in to Quizzle" screen with a
    working **Sign in with Google** button.
@@ -259,10 +275,16 @@ prints the exact origin under the "This app origin" label.
 - **Never** put a service-account key, a Firebase Admin SDK credential, or an AI
   provider key in `.env`. Those belong in the server-side API layer, which is
   deliberately not built yet.
-- `.env` and all `.env.*` variants are gitignored; only `.env.example` is
-  tracked. Verify before committing:
+- `.env` and all `.env.*` variants are gitignored, and **no template is
+  committed** — `.env.example` was removed at the owner's request. Verify before
+  committing:
   ```bash
-  git check-ignore -v .env
+  git check-ignore -v .env          # must print the matching .gitignore rule
+  git ls-files | grep -i '^\.env'   # must print nothing
+  ```
+  If `.env` is ever tracked, untrack it **without deleting your local file**:
+  ```bash
+  git rm --cached .env
   ```
 - Consider enabling **App Check** (reCAPTCHA Enterprise on web) before any
   public deployment.

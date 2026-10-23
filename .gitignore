@@ -31,13 +31,17 @@ yarn-error.*
 *.pem
 
 # Environment files.
-# SECURITY: ignore every .env variant by default. The previous pattern was
-# `.env*.local`, which only matched files ENDING in `.local` — plain `.env` and
-# `.env.production` were NOT ignored and would have been committed with real
-# credentials. `.env.example` is re-included below as the only tracked template.
+# SECURITY: ignore every .env variant with no exceptions. The previous pattern
+# was `.env*.local`, which only matched files ENDING in `.local` — plain `.env`
+# and `.env.production` were NOT ignored and would have been committed with real
+# credentials.
+#
+# `.env` is the single environment file and is created manually. There is no
+# committed template (`.env.example` was removed on the owner's request) — see
+# docs/FIREBASE_SETUP.md for the values to put in it. Never commit real
+# credentials.
 .env
 .env.*
-!.env.example
 
 # typescript
 *.tsbuildinfo

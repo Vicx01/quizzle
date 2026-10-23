@@ -46,7 +46,7 @@ function withEnv(overrides: Record<string, string | undefined>, fn: () => void) 
 }
 
 describe('looksLikePlaceholder', () => {
-  it('detects .env.example placeholder values', () => {
+  it('detects unfilled template placeholder values', () => {
     expect(looksLikePlaceholder('your-firebase-web-api-key')).toBe(true);
     expect(looksLikePlaceholder('your-project-id')).toBe(true);
     expect(looksLikePlaceholder('your-project-id.firebaseapp.com')).toBe(true);
@@ -86,7 +86,7 @@ describe('getFirebaseConfigStatus', () => {
     });
   });
 
-  it('flags values that were copied from .env.example unchanged', () => {
+  it('flags values that were left as template placeholders unchanged', () => {
     withEnv(
       {
         EXPO_PUBLIC_FIREBASE_API_KEY: 'your-firebase-web-api-key',

@@ -77,9 +77,10 @@ export const RECOMMENDED_FIREBASE_ENV = [
 ] as const;
 
 /**
- * Substrings that indicate a value was copied from `.env.example` and never
- * filled in. Catching these turns a confusing Firebase runtime error into a
- * clear "you forgot to set this" message.
+ * Substrings that indicate a value was never filled in — for example leaving
+ * template text like `your-project-id` in `.env`. Catching these turns a
+ * confusing Firebase runtime error into a clear "you forgot to set this"
+ * message.
  */
 const PLACEHOLDER_MARKERS = [
   'your-',
