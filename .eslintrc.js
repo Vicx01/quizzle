@@ -54,5 +54,9 @@ module.exports = {
     'ios/',
     'android/',
     'package-lock.json',
+    // Supabase Edge Functions are Deno code and are excluded from the app
+    // tsconfig, so this (Node/Expo) setup cannot parse them: they use `Deno.*`
+    // globals and `npm:` specifiers. Checked with `deno check` instead.
+    'supabase/functions/',
   ],
 };

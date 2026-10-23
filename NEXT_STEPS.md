@@ -1,6 +1,6 @@
 # Quizzle — Next Steps
 
-**Current phase:** Supabase migration — Phase 5 (Profiles + quiz persistence) is **IMPLEMENTED**. Owner CRUD works against the deployed schema and the History tab is live. Phase 4 (auth) is code-complete with **a real-browser Google sign-in still outstanding**.
+**Current phase:** Supabase migration — Phase 6 (Secure sharing + server-side grading) is **IMPLEMENTED as two Edge Functions but NOT DEPLOYED and NEVER INVOKED**. Phases 4–5 are code-complete; **a real-browser Google sign-in remains outstanding**.
 
 **Status:** The database foundation (Phases 1–3) is applied to the hosted project and verified on it. Supabase Auth is the only auth path in the code — the `EXPO_PUBLIC_AUTH_PROVIDER` switch is gone, `services/firebase.ts` is deleted, and no application code references Firebase. Every automated check passes. **A real Google OAuth flow has never been executed**, because this sandbox has no network path to Google or to the Supabase host.
 
@@ -140,16 +140,16 @@ plainly instead of implying the button is decorative.
 
 ## Verification results (actual, this phase)
 
-| Check               | Command                                  | Result                             |
-| ------------------- | ---------------------------------------- | ---------------------------------- |
-| App tests           | `npx jest`                               | **173 passed** / 16 suites         |
-| Database tests      | `npm run test:db`                        | **96 passed**, 0 failed, 0 skipped |
-| Typecheck           | `./node_modules/.bin/tsc --noEmit`       | clean                              |
-| Lint                | `npx eslint . --ext .ts,.tsx`            | 0 errors, 7 pre-existing warnings  |
-| Prettier            | `npx prettier --check .`                 | clean                              |
-| Web bundle          | `npx expo export --platform web --clear` | **277 modules, 753 KB**            |
-| Live RLS            | MCP `execute_query`                      | 9/9 tables RLS-enabled             |
-| Real Google sign-in | —                                        | **NOT VERIFIED — owner action**    |
+| Check               | Command                                  | Result                              |
+| ------------------- | ---------------------------------------- | ----------------------------------- |
+| App tests           | `npx jest`                               | **197 passed** / 17 suites          |
+| Database tests      | `npm run test:db`                        | **106 passed**, 0 failed, 0 skipped |
+| Typecheck           | `./node_modules/.bin/tsc --noEmit`       | clean                               |
+| Lint                | `npx eslint . --ext .ts,.tsx`            | 0 errors, 7 pre-existing warnings   |
+| Prettier            | `npx prettier --check .`                 | clean                               |
+| Web bundle          | `npx expo export --platform web --clear` | **277 modules, 753 KB**             |
+| Live RLS            | MCP `execute_query`                      | 9/9 tables RLS-enabled              |
+| Real Google sign-in | —                                        | **NOT VERIFIED — owner action**     |
 
 Removing Firebase Auth took the bundle from 287 modules / 1.5 MB to 271 modules
 / 739 KB. Phase 5 added the persistence layer and History screen, taking it to
@@ -160,6 +160,95 @@ Removing Firebase Auth took the bundle from 287 modules / 1.5 MB to 271 modules
 > file. Pass `--clear` when the module count matters.
 
 ---
+
+---
+
+## Phase 6 — Secure sharing + server-side grading (IMPLEMENTED 2026-10-23)
+
+Per `docs/SUPABASE_MIGRATION.md` §13:
+
+> **6 | Secure sharing + server-side grading | Edge Functions implementing
+> docs/SHARE_LINK_API.md**
+
+### What was built
+
+Two Edge Functions, both running under the service-role key:
+
+| Function        | Path                                | Purpose                                                        |
+| --------------- | ----------------------------------- | -------------------------------------------------------------- |
+| `share-resolve` | `supabase/functions/share-resolve/` | Turns a share token into a quiz **without** its answer key.    |
+| `share-attempt` | `supabase/functions/share-attempt/` | Accepts answers, grades them server-side, records the attempt. |
+
+The security-critical logic lives in tested shared modules rather than in the
+handlers, so every decision the handlers make is covered:
+
+| Module                 | Responsibility                                       |
+| ---------------------- | ---------------------------------------------------- |
+| `_shared/allowlist.ts` | Builds responses field-by-field; asserts no key leak |
+| `_shared/grade.ts`     | Validates answers and grades against the key         |
+| `_shared/token.ts`     | Format validation and log redaction                  |
+| `_shared/rateLimit.ts` | Soft per-IP + per-token limiting                     |
+| `_shared/respond.ts`   | CORS, `no-store`, the one generic 404                |
+
+### Why sharing must be server-mediated
+
+RLS gives no client read access to a quiz it does not own, so a taker can only
+receive the quiz through these functions. `share-resolve` assembles its
+response from an **explicit allowlist** — fields are copied in by name, never
+by spreading a row. A denylist would silently leak every column added later.
+`assertNoAnswerKey()` re-checks the built payload at runtime.
+
+### Why grading is server-side
+
+The client is never sent the key, so it cannot grade itself — and sending it
+would defeat the entire answer-key separation in the schema. `share-attempt`
+reads the key on the server and reveals correct answers **only** in its
+response, after submission.
+
+Attempts are written under `service_role` because `quiz_attempts` and
+`attempt_answers` have SELECT-only client policies (a client insert is rejected
+with `42501`, verified against the live database). A user therefore cannot award
+themselves points — there is no path by which they could write a score.
+
+**Theory questions are not auto-graded.** They are recorded with
+`is_correct: null` and the attempt stays `submitted`. Inventing a score for free
+text would be worse than admitting we do not know, so the response carries
+`fullyGraded: false` and the UI can say so.
+
+### One generic 404, always
+
+Unknown, expired, revoked, exhausted and soft-deleted all return the same 404.
+Distinguishing them would turn the endpoint into a token oracle that confirms
+which links were ever valid.
+
+### NOT deployed — a deliberate choice
+
+The functions are **not** on the hosted project. Reasons:
+
+1. They have never been invoked, and this sandbox cannot reach the Supabase host
+   to invoke them.
+2. **There is no way to create a share link yet** — `share_links` rows are only
+   inserted by tests. Until link creation exists the functions are inert: every
+   request correctly resolves to a 404. Deploying buys nothing.
+3. Deno is not installed here, so the files are **not typechecked**.
+
+Deploy when ready:
+
+```bash
+supabase functions deploy share-resolve --no-verify-jwt
+supabase functions deploy share-attempt --no-verify-jwt
+```
+
+`--no-verify-jwt` is required: possession of the token is the authorisation and
+a taker has no session.
+
+### Rate limiting is soft, and that is documented
+
+`_shared/rateLimit.ts` is in-memory and per-instance, so it does **not** provide
+a hard global guarantee — Supabase runs many isolates. The authoritative limits
+are in the database and cannot be bypassed by spreading load:
+`share_links.max_access` (incremented atomically), `expires_at`, and the 30-day
+window CHECK constraint.
 
 ---
 

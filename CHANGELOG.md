@@ -1467,3 +1467,95 @@ the count matters.
   provider (Phase 8, deferred). The persistence layer is exercised by tests, not
   by a user flow.
 - Real-browser Google sign-in remains outstanding from Phase 4.
+
+## 2026-10-23 — Phase 6: secure sharing + server-side grading (Edge Functions)
+
+Implements `docs/SHARE_LINK_API.md` as two Supabase Edge Functions.
+
+### Added
+
+- **`supabase/functions/share-resolve/`** — turns a share token into a quiz,
+  without its answer key.
+- **`supabase/functions/share-attempt/`** — accepts answers, grades them
+  server-side, records the attempt and its per-question outcome.
+- **`supabase/functions/_shared/`** — the tested logic the handlers delegate to:
+  `allowlist.ts` (response shaping + leak assertion), `grade.ts` (validation and
+  grading), `token.ts` (format + log redaction), `rateLimit.ts`, `respond.ts`
+  (CORS, `no-store`, the one generic 404).
+- **`supabase/functions/tsconfig.json`** — Deno configuration for the functions.
+- **`tests/functions/share.test.ts`** — 24 unit tests.
+- **`tests/database/share.test.mjs`** — 10 executed database tests, wired into
+  `npm run test:db`.
+
+### Changed
+
+- `tsconfig.json` — excludes `supabase/functions`; it is Deno code using
+  `Deno.*` globals and `npm:` specifiers that the Expo/Node setup cannot parse.
+- `.eslintrc.js` — ignores `supabase/functions/` for the same reason.
+- `package.json` — `test:db` now also runs `tests/database/share.test.mjs`.
+- `docs/SHARE_LINK_API.md` — no longer "contract only"; records what is built,
+  what is verified, and how to deploy.
+
+### Security properties
+
+- **Responses are allowlisted, never spread.** `buildSharedQuiz()` copies
+  fields by name, so a column added later is invisible until deliberately
+  published. `assertNoAnswerKey()` re-checks the built payload at runtime.
+- **One generic 404** for unknown, expired, revoked, exhausted and soft-deleted
+  links. Distinguishing them would make the endpoint a token oracle.
+- **Grading is server-side** because the client never receives the key. Correct
+  answers appear only in the graded response, after submission.
+- **Scores cannot be forged.** `quiz_attempts` and `attempt_answers` have
+  SELECT-only client policies (a client insert fails with `42501`, verified on
+  the live database), so attempts are written under `service_role`.
+- **Tokens are never stored or logged in the clear** — only a SHA-256 hash, and
+  logs carry a 4-character prefix.
+
+### Two real defects found
+
+1. **A rate-limit off-by-one.** `checkRateLimit()` returned early on the first
+   request in a window, so a limit of `0` still allowed one call. Both branches
+   now fall through to a single comparison.
+2. **The authenticated-caller gap.** The existing database suite proved _anon_
+   cannot call `resolve_share_link` / `record_share_access`, but not that a
+   _signed-in user_ cannot. That is the more important case — an authenticated
+   caller could otherwise enumerate tokens directly. New tests cover it, and a
+   mutation (granting EXECUTE to `authenticated`) makes them fail.
+
+### Results
+
+| Check        | Before          | After                      |
+| ------------ | --------------- | -------------------------- |
+| App (`jest`) | 173 / 16 suites | **197 passed** / 17 suites |
+| Database     | 96              | **106 passed**             |
+| Typecheck    | clean           | clean                      |
+| Lint         | 0 errors        | 0 errors, 7 warnings       |
+| Prettier     | clean           | clean                      |
+| Web bundle   | 277 modules     | 277 modules (unchanged)    |
+
+### NOT verified — and NOT deployed
+
+The functions are **not** on the hosted project and have **never been invoked**.
+Deliberate, for three reasons:
+
+1. This sandbox cannot reach `ppswtryoescehrytxvsh.supabase.co`, so nothing
+   could be exercised.
+2. **There is no way to create a share link yet** — `share_links` rows are
+   inserted only by tests. Until link creation exists the functions are inert,
+   and every request correctly returns 404. Deploying would buy nothing.
+3. **Deno is not installed here, so the function files are not typechecked.**
+   Run `deno check supabase/functions/*/index.ts` before deploying.
+
+Deploy with `--no-verify-jwt` (possession of the token is the authorisation):
+
+```bash
+supabase functions deploy share-resolve --no-verify-jwt
+supabase functions deploy share-attempt --no-verify-jwt
+```
+
+### Rate limiting is soft by design
+
+`_shared/rateLimit.ts` is in-memory and per-instance, so it does not give a hard
+global guarantee. The authoritative limits are in the database:
+`share_links.max_access` incremented atomically, `expires_at`, and the 30-day
+window CHECK constraint.

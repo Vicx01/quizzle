@@ -3,5 +3,10 @@
   "compilerOptions": {
     "strict": true,
     "types": ["jest", "node"]
-  }
+  },
+  // Supabase Edge Functions are Deno code: they use `Deno.*` globals and
+  // `npm:`/`jsr:` import specifiers, neither of which the Expo/Node TypeScript
+  // setup can resolve. They are checked separately by `deno check` against
+  // supabase/functions/tsconfig.json.
+  "exclude": ["node_modules", "dist", "web-build", "supabase/functions"]
 }

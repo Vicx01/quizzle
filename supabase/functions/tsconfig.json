@@ -1,0 +1,20 @@
+{
+  // Configuration for the Deno Edge Functions only.
+  //
+  // Checked with:  deno check supabase/functions/*/index.ts
+  // (Deno is not installed in every environment; the app's own `npm run
+  // typecheck` deliberately excludes this directory.)
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    // Deno requires explicit file extensions on relative imports.
+    "allowImportingTsExtensions": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true
+  }
+}

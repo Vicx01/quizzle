@@ -1,10 +1,21 @@
 # Shared quizzes — server-side API contract
 
-**Status: CONTRACT ONLY. Nothing here is implemented.**
+**Status: IMPLEMENTED as two Supabase Edge Functions, NOT yet deployed or executed.**
 
-The server-side API layer does not exist yet. This document specifies what it
-must do so that shared quizzes can be built securely. It is written as a
-contract for review, not as a description of working code.
+| Endpoint                  | Source                              | Status                      |
+| ------------------------- | ----------------------------------- | --------------------------- |
+| Resolve a share link      | `supabase/functions/share-resolve/` | Implemented, **unexecuted** |
+| Submit + grade an attempt | `supabase/functions/share-attempt/` | Implemented, **unexecuted** |
+
+The document below is the contract those functions implement. Every requirement
+in it is met in code, and the security-critical parts (the response allowlist,
+server-side grading, and the one-generic-404 rule) are covered by **24 unit
+tests** in `tests/functions/share.test.ts` and **10 database tests** in
+`tests/database/share.test.mjs`.
+
+**Nothing has been run against the hosted project.** The functions are not
+deployed, and this environment cannot reach the Supabase host to invoke them
+even if they were. See "Verification status" at the end.
 
 ---
 
@@ -181,5 +192,38 @@ through the Admin SDK.
 
 ## Verification status
 
-**Unverified.** This is a contract, not running code. The Firestore rules it
-depends on are also unexecuted — see NEXT_STEPS.md.
+**NOT executed.** Distinguish carefully:
+
+- **Verified** — 24 unit tests over the allowlist, grading, validation, token
+  handling and rate limiting; 10 executed database tests proving the underlying
+  SQL primitives behave, including that `resolve_share_link` and
+  `record_share_access` are callable **only** by `service_role` (both anon and
+  authenticated are refused with `42501`). The authenticated case was
+  mutation-tested: granting it makes the test fail.
+- **NOT verified** — the functions have never been invoked. They are not
+  deployed, and this sandbox cannot reach `ppswtryoescehrytxvsh.supabase.co` to
+  call them. Request handling, cold-start behaviour, CORS in the real gateway,
+  and the `SUPABASE_SERVICE_ROLE_KEY` wiring are all unproven.
+- **NOT typechecked** — Deno is not installed in this environment. The
+  functions are excluded from the app's tsconfig and ESLint config; run
+  `deno check supabase/functions/*/index.ts` before deploying.
+
+### Deploying
+
+```bash
+supabase functions deploy share-resolve
+supabase functions deploy share-attempt
+```
+
+Both must run **without** JWT verification — possession of the share token is
+the authorisation, and a taker has no session. With the CLI this means
+`--no-verify-jwt`; in the dashboard, uncheck "Enforce JWT verification".
+
+Once deployed, add the app origin to `ALLOWED_ORIGINS` if it is not one of the
+defaults in `supabase/functions/_shared/respond.ts`.
+
+### Still missing before sharing works end to end
+
+There is **no way to create a share link yet**. `share_links` rows are inserted
+directly by tests; no screen or endpoint mints one. Until link creation exists,
+these functions are inert — every request resolves to a 404, correctly.
