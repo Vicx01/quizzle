@@ -32,15 +32,30 @@ git checkout arena/9131a5e6-quizzle
 
 # 2. Install dependencies
 npm install
+```
 
-# 3. Create your environment file
-cp .env.example .env
+**3. Create your environment file.** Pick the command for your shell:
 
+| Shell                               | Command                       |
+| ----------------------------------- | ----------------------------- |
+| macOS / Linux / Git Bash on Windows | `cp .env.example .env`        |
+| Windows **Command Prompt (cmd)**    | `copy .env.example .env`      |
+| Windows **PowerShell**              | `Copy-Item .env.example .env` |
+
+> `cp` does **not** exist in Windows Command Prompt or PowerShell — it is a
+> Unix command. Using it there produces
+> `'cp' is not recognized as an internal or external command`.
+> If you have Git for Windows installed, **Git Bash** accepts `cp` and all the
+> other commands in this README unchanged.
+
+Then:
+
+```bash
 # 4. Start the web app
 npm run web
 ```
 
-Then open the URL Expo prints in the terminal.
+Open the URL Expo prints in the terminal.
 
 If `npm install` fails with an `ERESOLVE` peer-dependency error (some npm
 versions are stricter), retry with:
@@ -146,6 +161,27 @@ npx expo start --web --clear
 ```bash
 npx expo start --web --port 8082
 ```
+
+### Windows notes
+
+**`.env` may have been saved as `.env.txt`.** Notepad appends `.txt` by default,
+and File Explorer refuses to create files whose names start with a dot. A file
+named `.env.txt` is ignored entirely, so the app will still report missing
+values. Check the real name:
+
+```
+dir .env*
+```
+
+If `.env.txt` appears, rename it:
+
+```
+ren .env.txt .env
+```
+
+**Line endings.** Git for Windows may check files out with CRLF endings. If a
+value in `.env` looks correct but is rejected, re-save the file with LF endings,
+or clone with `git clone --config core.autocrlf=false`.
 
 ---
 
