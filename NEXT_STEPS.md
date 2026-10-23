@@ -1,8 +1,8 @@
 # Quizzle — Next Steps
 
-**Current phase:** Supabase migration — Phase 1 database foundation (COMPLETE). Phase 2 (Google-only Supabase Auth) is next.
+**Current phase:** Supabase migration — Phase 4 (Google-only Supabase Auth) is IMPLEMENTED and AWAITING OWNER VERIFICATION.
 
-**Status:** The Supabase PostgreSQL schema and RLS policies are implemented, covered by 74 executed tests, **applied to the hosted Supabase project `quizzle` (`ppswtryoescehrytxvsh`) and verified on it directly**. Firebase authentication is untouched and still working. The only remaining blocker for the auth phase is Google OAuth, which needs credentials created in the Google Cloud Console.
+**Status:** The database foundation is applied to the hosted project and verified on it. **Supabase authentication is now implemented but NOT yet run.** Google OAuth is enabled on the project; the app can sign in through Supabase by setting `EXPO_PUBLIC_AUTH_PROVIDER=supabase`, with Firebase remaining the default until the owner confirms Supabase sign-in works.
 
 **Last updated:** 2026-10-23
 
@@ -77,13 +77,49 @@ only emulates that schema.
 
 Full results are tabulated in `docs/SUPABASE_SETUP.md` §10.
 
+### Supabase auth — code complete, never executed
+
+Google OAuth is enabled on the hosted project (verified through the API:
+`external_google_enabled: true`, client ID and secret set, nonce check on).
+
+What was built:
+
+- `services/supabase.ts` — client construction and configuration diagnostics.
+- `services/authSupabase.ts` — Google OAuth, session observation, sign-out,
+  and scrubbing OAuth parameters from the URL after a redirect.
+- `services/auth.ts` — now a **provider dispatcher** rather than Firebase code.
+- A provider-neutral `AppUser` type, so no screen depends on either vendor's
+  user shape.
+
+**The migration switch is `EXPO_PUBLIC_AUTH_PROVIDER`.** Firebase is the
+default; only the exact value `supabase` switches to Supabase, and any other
+value (including a typo) falls back to Firebase. That keeps a working login at
+all times and prevents two providers from being live at once.
+
+### How you verify it
+
+1. Add to your local `.env`:
+   ```
+   EXPO_PUBLIC_SUPABASE_URL=https://ppswtryoescehrytxvsh.supabase.co
+   EXPO_PUBLIC_SUPABASE_ANON_KEY=<publishable key>
+   EXPO_PUBLIC_AUTH_PROVIDER=supabase
+   ```
+2. Restart the dev server (env vars are inlined at build time) and open the app
+   in a real browser tab — not the embedded preview, which Google blocks.
+3. Sign in with Google. If it fails, the error message names the fix.
+
+If the current host is not on the redirect allow-list, sign-in will be rejected
+and the message will tell you to add it under Authentication → URL
+Configuration → Redirect URLs. The list currently covers
+`http://localhost:8081`, `http://localhost:19006` and `https://8081-*.e2b.app`;
+**the sandbox host changes between sessions, so a new one must be added each
+time.**
+
 ### What is NOT verified
 
-- **Google sign-in.** The provider is still disabled: email and phone were
-  switched off to enforce Google-only, and enabling Google needs OAuth
-  credentials created in the Google Cloud Console. **Until that is done, no
-  Supabase sign-in provider works.** The app is unaffected — it still signs in
-  through Firebase.
+- **Supabase Google sign-in has never been executed.** The sandbox has no
+  network path to Google, so no OAuth flow can run here. Only the owner can
+  confirm it. Everything about the Supabase auth path is unproven until then.
 - **PostgREST behaviour.** The hosted checks ran as SQL roles
   (`anon` / `authenticated` / `service_role`). They do not exercise PostgREST's
   request handling, so the app's actual client queries are still unproven.

@@ -11,7 +11,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { StatusBar, StyleSheet, Text, View } from 'react-native';
-import type { User } from 'firebase/auth';
+import type { AppUser } from './types';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { GenerateScreen } from './screens/Generate';
 import { SignInScreen } from './screens/SignIn';
@@ -27,7 +27,8 @@ import {
   isEmbeddedInFrame,
   signOut,
 } from './services/auth';
-import { getFirebaseConfigStatus, type ConfigStatus } from './services/firebase';
+import type { ConfigStatus } from './services/configStatus';
+import { getAuthConfigStatus } from './services/auth';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { space, fontSize } from './theme/tokens';
 
@@ -57,13 +58,13 @@ export default function App() {
   const [signingIn, setSigningIn] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('generate');
   const { isConnected } = useNetworkStatus();
 
   // Read once: env vars are inlined at build time, so this cannot change at
   // runtime, but recomputing keeps the value stable across re-renders.
-  const [configStatus] = useState<ConfigStatus>(() => getFirebaseConfigStatus());
+  const [configStatus] = useState<ConfigStatus>(() => getAuthConfigStatus());
 
   // Sign-in environment, surfaced on the sign-in screen. Read once — the origin
   // and framing cannot change without a fresh page load.
@@ -98,7 +99,7 @@ export default function App() {
     if (!isAuthConfigured()) {
       // Should not be reachable: the sign-in button is replaced by the setup
       // checklist when configuration is incomplete.
-      setAuthError('Firebase is not configured. See the setup checklist above.');
+      setAuthError('Sign-in is not configured. See the setup checklist above.');
       return;
     }
     setSigningIn(true);
@@ -127,7 +128,7 @@ export default function App() {
     setSignOutError(null);
     try {
       await signOut();
-      // Do not flip authState here. Firebase's onAuthStateChanged is the single
+      // Do not flip authState here. The provider's onAuthStateChanged is the single
       // source of truth: it fires with null and moves the shell to the sign-in
       // screen. Setting state here too would race the listener and could show
       // the sign-in screen before the session is actually torn down.

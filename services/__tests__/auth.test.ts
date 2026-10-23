@@ -8,6 +8,7 @@
 import {
   describeAuthError,
   describeAuthErrorWithCode,
+  getAuthProvider,
   getCurrentOrigin,
   isCancellation,
   isEmbeddedInFrame,
@@ -109,5 +110,80 @@ describe('sign-in environment helpers', () => {
   it('is not framed at the top level', () => {
     // jsdom renders at the top level: window.self === window.top.
     expect(isEmbeddedInFrame()).toBe(false);
+  });
+});
+
+describe('provider selection', () => {
+  const OLD = process.env.EXPO_PUBLIC_AUTH_PROVIDER;
+
+  afterEach(() => {
+    if (OLD === undefined) delete process.env.EXPO_PUBLIC_AUTH_PROVIDER;
+    else process.env.EXPO_PUBLIC_AUTH_PROVIDER = OLD;
+  });
+
+  it('defaults to Firebase when the variable is unset', () => {
+    delete process.env.EXPO_PUBLIC_AUTH_PROVIDER;
+    expect(getAuthProvider()).toBe('firebase');
+  });
+
+  it('defaults to Firebase for any unrecognised value', () => {
+    // A typo must not silently half-enable Supabase with no credentials.
+    process.env.EXPO_PUBLIC_AUTH_PROVIDER = 'Supabase';
+    expect(getAuthProvider()).toBe('firebase');
+
+    process.env.EXPO_PUBLIC_AUTH_PROVIDER = 'supabase-';
+    expect(getAuthProvider()).toBe('firebase');
+  });
+
+  it('selects Supabase only for the exact value', () => {
+    process.env.EXPO_PUBLIC_AUTH_PROVIDER = 'supabase';
+    expect(getAuthProvider()).toBe('supabase');
+  });
+
+  it('keeps Firebase error mapping while Firebase is the active provider', () => {
+    delete process.env.EXPO_PUBLIC_AUTH_PROVIDER;
+    expect(describeAuthError(err('auth/unauthorized-domain'))).toMatch(/Authorized domains/i);
+  });
+});
+
+describe('describeAuthError — Supabase provider', () => {
+  const OLD = process.env.EXPO_PUBLIC_AUTH_PROVIDER;
+
+  beforeEach(() => {
+    process.env.EXPO_PUBLIC_AUTH_PROVIDER = 'supabase';
+  });
+
+  afterEach(() => {
+    if (OLD === undefined) delete process.env.EXPO_PUBLIC_AUTH_PROVIDER;
+    else process.env.EXPO_PUBLIC_AUTH_PROVIDER = OLD;
+  });
+
+  it('explains a rejected callback and names the fix', () => {
+    const msg = describeAuthError({ code: 'validation_failed' });
+    expect(msg).toMatch(/Redirect URLs/i);
+    expect(msg).toMatch(/Supabase/i);
+  });
+
+  it('explains that the Google provider is disabled', () => {
+    expect(describeAuthError({ code: 'provider_disabled' })).toMatch(
+      /Google provider is not enabled/i
+    );
+  });
+
+  it('treats an OAuth denial as a cancellation', () => {
+    expect(isCancellation({ code: 'access_denied' })).toBe(true);
+    expect(isCancellation({ name: 'user_cancelled' })).toBe(true);
+    expect(isCancellation({ code: 'network_error' })).toBe(false);
+  });
+
+  it('does not print a bogus code for a plain Error', () => {
+    // `new Error('boom')` has name "Error", which is noise, not a diagnostic.
+    expect(describeAuthErrorWithCode(new Error('boom'))).not.toMatch(/Error code:/);
+  });
+
+  it('does surface a real Supabase code', () => {
+    expect(describeAuthErrorWithCode({ code: 'bad_oauth_callback' })).toMatch(
+      /Error code: bad_oauth_callback/
+    );
   });
 });

@@ -1,16 +1,22 @@
 /**
- * Quizzle — Authentication service.
+ * Quizzle — Authentication service (provider dispatcher).
  *
- * Firebase Authentication with Google sign-in (web primary, native later).
- * Google-only sign-in — no email/password, no social alternatives.
+ * Quizzle signs in with Google only — no email/password, no other providers.
  *
- * STATUS: VERIFIED. The owner ran the flow against the live Firebase project and
- * confirmed a successful Google sign-in. Firestore is initialised but unused.
+ * During the Firebase -> Supabase migration this module dispatches to whichever
+ * provider is active. The provider is chosen by `EXPO_PUBLIC_AUTH_PROVIDER`:
  *
- * Known gaps:
- *  - `signOut()` is exported but not wired to any UI, so a signed-in user
- *    cannot sign out yet.
- *  - No Firestore security rules exist, so there is no data-access control.
+ *   * unset or `firebase`  -> Firebase (the current, owner-verified login)
+ *   * `supabase`           -> Supabase Auth
+ *
+ * Firebase remains the DEFAULT until Supabase sign-in has been verified by the
+ * owner. That ordering matters: the app must never be left with a login that
+ * has not been proven to work, and it must never have both providers live in
+ * production at once. The switch is a single env var and Firebase is deleted in
+ * the final phase.
+ *
+ * Every screen consumes the provider-neutral `AppUser`, not Firebase's or
+ * Supabase's user type.
  */
 
 import type { User } from 'firebase/auth';
@@ -22,23 +28,49 @@ import {
   onAuthStateChanged as fbOnAuthStateChanged,
   signOut as fbSignOut,
 } from 'firebase/auth';
+import type { AppUser, AuthProvider } from '../types';
 import { getFirebaseAuth, getFirebaseConfigStatus } from './firebase';
+import type { ConfigStatus } from './configStatus';
+import { getSupabaseConfigStatus } from './supabase';
+import {
+  cleanUpSupabaseUrl,
+  getSupabaseUser,
+  onSupabaseAuthStateChanged,
+  signInWithGoogleSupabase,
+  signOutSupabase,
+} from './authSupabase';
 
 // Re-export for convenience
 export { getFirebaseAuth };
 
+// ---------------------------------------------------------------------------
+// Provider selection
+// ---------------------------------------------------------------------------
+
 /**
- * True when the Firebase environment variables required for sign-in are present
- * and look usable. The app shows an actionable "not configured" state instead of
- * offering a sign-in button that would silently fail.
+ * Which backend is serving sign-in.
+ *
+ * Read from an env var rather than hard-coded so the owner can try Supabase on
+ * one machine without shipping it to everyone. Anything other than the exact
+ * string `supabase` falls back to Firebase, which keeps the default safe.
  */
-export function isAuthConfigured(): boolean {
-  return getFirebaseConfigStatus().ok;
+export function getAuthProvider(): AuthProvider {
+  return process.env.EXPO_PUBLIC_AUTH_PROVIDER === 'supabase' ? 'supabase' : 'firebase';
 }
 
-export function onAuthStateChanged(callback: (user: User | null) => void) {
-  const auth = getFirebaseAuth();
-  return fbOnAuthStateChanged(auth, callback);
+/**
+ * True when the ACTIVE provider has the configuration it needs.
+ *
+ * The sign-in screen uses this to decide between showing a working button and
+ * showing a setup checklist — it must never render a button that cannot work.
+ */
+export function isAuthConfigured(): boolean {
+  return getAuthConfigStatus().ok;
+}
+
+/** Configuration diagnostic for the active provider. */
+export function getAuthConfigStatus(): ConfigStatus {
+  return getAuthProvider() === 'supabase' ? getSupabaseConfigStatus() : getFirebaseConfigStatus();
 }
 
 /** Best-effort current origin, for "add this domain" instructions. Web only. */
@@ -53,7 +85,7 @@ function currentOrigin(): string | null {
  * Public accessor for the current origin.
  *
  * Surfaced in the UI because embedded previews hide the address bar, leaving no
- * other way to read the value that must be allowlisted in Firebase.
+ * other way to read the value that must be allowlisted by the provider.
  */
 export function getCurrentOrigin(): string | null {
   return currentOrigin();
@@ -77,6 +109,180 @@ export function isEmbeddedInFrame(): boolean {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Session observation
+// ---------------------------------------------------------------------------
+
+function toAppUserFromFirebase(user: User | null): AppUser | null {
+  if (!user) return null;
+  return {
+    id: user.uid,
+    email: user.email ?? null,
+    displayName: user.displayName ?? null,
+    photoURL: user.photoURL ?? null,
+    provider: 'firebase',
+  };
+}
+
+export function onAuthStateChanged(callback: (user: AppUser | null) => void): () => void {
+  if (getAuthProvider() === 'supabase') {
+    return onSupabaseAuthStateChanged(callback);
+  }
+  const auth = getFirebaseAuth();
+  return fbOnAuthStateChanged(auth, user => callback(toAppUserFromFirebase(user)));
+}
+
+/** The current user according to the active provider. Async: Supabase reads
+ *  persisted storage, which is asynchronous on native. */
+export async function getCurrentUser(): Promise<AppUser | null> {
+  if (getAuthProvider() === 'supabase') return getSupabaseUser();
+  return toAppUserFromFirebase(getFirebaseAuth().currentUser);
+}
+
+/**
+ * Completes a redirect-based sign-in after the browser returns to the app.
+ *
+ * Firebase: must be called ONCE on startup, not after `signInWithRedirect` — by
+ * the time the redirect completes the original page has been torn down.
+ *
+ * Supabase: the client is created with `detectSessionInUrl`, so the exchange
+ * happens automatically. This is a no-op there beyond scrubbing the OAuth
+ * parameters out of the address bar.
+ */
+export async function consumeRedirectResult(): Promise<AppUser | null> {
+  if (getAuthProvider() === 'supabase') {
+    cleanUpSupabaseUrl();
+    return null;
+  }
+  if (!isAuthConfigured()) return null;
+  try {
+    const result = await getRedirectResult(getFirebaseAuth());
+    return toAppUserFromFirebase(result?.user ?? null);
+  } catch (error) {
+    // A failed redirect result should not block app startup.
+    // eslint-disable-next-line no-console
+    console.warn('[auth] redirect result error:', describeAuthError(error));
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sign in / out
+// ---------------------------------------------------------------------------
+
+/**
+ * Starts Google sign-in.
+ *
+ * Firebase: popup first, falling back to redirect ONLY when the popup was
+ * blocked — if the user simply closed the popup we must not navigate their page
+ * away without consent.
+ *
+ * Supabase: always the redirect (OAuth) flow.
+ *
+ * Returns the user on immediate success, or null when the browser is
+ * navigating away and the result will arrive through `onAuthStateChanged`.
+ */
+export async function signInWithGoogle(): Promise<AppUser | null> {
+  if (getAuthProvider() === 'supabase') {
+    await signInWithGoogleSupabase();
+    // Redirect started; the session arrives via onAuthStateChanged.
+    return null;
+  }
+
+  const auth = getFirebaseAuth();
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+
+  try {
+    const result = await signInWithPopup(auth, provider);
+    return toAppUserFromFirebase(result.user);
+  } catch (error) {
+    const code = (error as { code?: string } | null)?.code ?? '';
+
+    // Only hijack the page with a redirect when the popup could not open at all.
+    if (
+      code === 'auth/popup-blocked' ||
+      code === 'auth/operation-not-supported-in-this-environment' ||
+      code === 'auth/web-storage-unsupported'
+    ) {
+      await signInWithRedirect(auth, provider);
+      // Page navigates away here; the result is handled by consumeRedirectResult.
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function signOut(): Promise<void> {
+  if (getAuthProvider() === 'supabase') {
+    await signOutSupabase();
+    return;
+  }
+  await fbSignOut(getFirebaseAuth());
+}
+
+// ---------------------------------------------------------------------------
+// Error mapping
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps a Supabase auth error to a message the user can act on.
+ *
+ * `validation_failed` / `bad_oauth_callback` are called out because they are
+ * the likely failures on a preview host: Supabase rejects any callback URL not
+ * on its redirect allow-list.
+ */
+export function describeSupabaseError(error: unknown): string {
+  const err = error as {
+    code?: string;
+    message?: string;
+    status?: number;
+    name?: string;
+  } | null;
+  const code = err?.code ?? err?.name ?? '';
+  const origin = currentOrigin();
+
+  switch (code) {
+    case 'validation_failed':
+    case 'bad_oauth_callback':
+    case 'request_timeout':
+      return origin
+        ? `Sign-in was rejected for this origin (${origin}). In the Supabase dashboard go to Authentication → URL Configuration and add it to the Redirect URLs list.`
+        : 'Sign-in was rejected for this origin. Add it under Authentication → URL Configuration → Redirect URLs in the Supabase dashboard.';
+
+    case 'provider_disabled':
+    case 'oauth_provider_not_supported':
+      return 'The Google provider is not enabled. Turn it on in the Supabase dashboard under Authentication → Providers → Google.';
+
+    case 'invalid_credentials':
+    case 'bad_oauth_state':
+      return 'The sign-in link expired or was opened out of order. Start the sign-in again.';
+
+    case 'popup_blocked':
+      return 'The sign-in popup was blocked by your browser. Allow popups for this site and try again.';
+
+    case 'access_denied':
+    case 'user_cancelled':
+      return 'Sign-in was cancelled.';
+
+    case 'signup_disabled':
+      return 'New sign-ups are disabled for this project. Enable them in the Supabase dashboard, or contact the project owner.';
+
+    case 'over_email_send_rate_limit':
+    case 'over_request_rate_limit':
+      return 'Too many sign-in attempts. Wait a moment and try again.';
+
+    case 'network_error':
+      return 'Network error while contacting Supabase. Check your connection and try again.';
+
+    default: {
+      const message = err?.message;
+      if (message) return `Sign-in failed: ${message}`;
+      return 'Sign-in failed. Please try again.';
+    }
+  }
+}
+
 /**
  * Maps a Firebase Auth error to a message the user can act on.
  *
@@ -85,6 +291,8 @@ export function isEmbeddedInFrame(): boolean {
  * any origin not on the Authorized Domains allowlist.
  */
 export function describeAuthError(error: unknown): string {
+  if (getAuthProvider() === 'supabase') return describeSupabaseError(error);
+
   const code = (error as { code?: string } | null)?.code ?? '';
   const origin = currentOrigin();
 
@@ -129,87 +337,39 @@ export function describeAuthError(error: unknown): string {
 
 /** True when the user cancelled rather than hitting a real failure. */
 export function isCancellation(error: unknown): boolean {
+  if (getAuthProvider() === 'supabase') {
+    const code =
+      (error as { code?: string; name?: string } | null)?.code ??
+      (error as { name?: string } | null)?.name ??
+      '';
+    return code === 'access_denied' || code === 'user_cancelled';
+  }
+
   const code = (error as { code?: string } | null)?.code ?? '';
   return code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request';
 }
 
 /**
- * `describeAuthError` plus the raw Firebase error code.
+ * `describeAuthError` plus the raw error code.
  *
  * The code is shown because some failures (notably a Google 403 raised before
- * Firebase returns a typed error) are far easier to diagnose with the exact
+ * the provider returns a typed error) are far easier to diagnose with the exact
  * identifier than with the prose message alone.
  */
 export function describeAuthErrorWithCode(error: unknown): string {
-  const code = (error as { code?: string } | null)?.code ?? '';
   const message = describeAuthError(error);
+
+  let code = '';
+  if (getAuthProvider() === 'supabase') {
+    // Supabase reports failures through either `code` or `name`. A plain
+    // `new Error(...)` has name "Error", which is noise rather than a
+    // diagnostic, so it is excluded.
+    const e = error as { code?: string; name?: string } | null;
+    const name = e?.name && e.name !== 'Error' ? e.name : '';
+    code = e?.code || name || '';
+  } else {
+    code = (error as { code?: string } | null)?.code ?? '';
+  }
+
   return code ? `${message}\n\nError code: ${code}` : message;
-}
-
-/**
- * Completes a redirect-based sign-in after the browser returns to the app.
- *
- * This must be called ONCE on startup, not after `signInWithRedirect` — by the
- * time the redirect completes the original page has been torn down. The previous
- * implementation called `getRedirectResult` immediately after
- * `signInWithRedirect`, which always returned null.
- *
- * Returns the signed-in user, or null if there was no pending redirect.
- */
-export async function consumeRedirectResult(): Promise<User | null> {
-  if (!isAuthConfigured()) return null;
-  try {
-    const result = await getRedirectResult(getFirebaseAuth());
-    return result?.user ?? null;
-  } catch (error) {
-    // A failed redirect result should not block app startup.
-    // eslint-disable-next-line no-console
-    console.warn('[auth] redirect result error:', describeAuthError(error));
-    return null;
-  }
-}
-
-/**
- * Starts Google sign-in.
- *
- * Uses the popup flow first. Falls back to redirect ONLY when the popup was
- * blocked — if the user simply closed the popup we must not navigate their page
- * away without consent.
- *
- * On a redirect fallback the page will navigate away and reload; the result is
- * picked up by `consumeRedirectResult()` on startup.
- */
-export async function signInWithGoogle(): Promise<User | null> {
-  const auth = getFirebaseAuth();
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
-
-  try {
-    const result = await signInWithPopup(auth, provider);
-    return result.user;
-  } catch (error) {
-    const code = (error as { code?: string } | null)?.code ?? '';
-
-    // Only hijack the page with a redirect when the popup could not open at all.
-    if (
-      code === 'auth/popup-blocked' ||
-      code === 'auth/operation-not-supported-in-this-environment' ||
-      code === 'auth/web-storage-unsupported'
-    ) {
-      await signInWithRedirect(auth, provider);
-      // Page navigates away here; the result is handled by consumeRedirectResult.
-      return null;
-    }
-    throw error;
-  }
-}
-
-export async function signOut(): Promise<void> {
-  const auth = getFirebaseAuth();
-  await fbSignOut(auth);
-}
-
-export function getCurrentUser(): User | null {
-  const auth = getFirebaseAuth();
-  return auth.currentUser;
 }

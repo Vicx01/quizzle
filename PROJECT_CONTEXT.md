@@ -206,9 +206,30 @@ local suite, including a `42501` rejection of a client attempt to insert its
 own quiz score, and the profile-bootstrap trigger firing against the real
 GoTrue schema.
 
-**No application code was changed and Firebase authentication is untouched and
-still working.** Local migration files were renamed to the versions Supabase
-assigned, so `supabase db push` treats them as already applied.
+**No application code was changed by the database phase, and Firebase
+authentication is untouched and still working.** Local migration files were
+renamed to the versions Supabase assigned, so `supabase db push` treats them as
+already applied.
+
+### Supabase authentication — implemented, NOT yet verified (2026-10-23)
+
+Google OAuth is enabled on the hosted project (confirmed through the API, with
+the nonce check left on). The app-side work is done:
+
+- `@supabase/supabase-js` installed; `services/supabase.ts` builds the client
+  and reports configuration health.
+- `services/authSupabase.ts` implements Google OAuth, session observation,
+  sign-out and URL cleanup.
+- `services/auth.ts` became a **provider dispatcher**. `EXPO_PUBLIC_AUTH_PROVIDER`
+  selects the backend; **Firebase remains the default**, and only the exact
+  value `supabase` switches it. A typo falls back to Firebase rather than
+  half-enabling a backend with no credentials.
+- Screens now consume a provider-neutral `AppUser` type instead of Firebase's
+  `User`, so no screen knows which backend is live.
+
+**This is unverified end to end.** No OAuth flow has been run: the sandbox has
+no network path to Google, so only the owner can confirm a real sign-in. The
+switched-off default means that until they do, nothing has changed for users.
 
 See `docs/SUPABASE_MIGRATION.md` (plan) and `docs/SUPABASE_SETUP.md`
 (project setup) for detail.

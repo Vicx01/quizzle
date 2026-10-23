@@ -34,10 +34,19 @@ The project has been created and the database foundation is **live on it**.
 - Auth URL configuration set, and email/phone sign-in disabled so Google is
   the only remaining provider.
 
+### Google OAuth — ENABLED (verified via API)
+
+`external_google_enabled: true`, with the Google client ID and secret set and
+the nonce check left **on** (the more secure setting). Google sign-in is
+configured; what remains is wiring the app to use it.
+
 ### What still needs you
 
-**Google OAuth.** It cannot be enabled through the API available here, and it
-needs credentials only you can create:
+**Add the credentials to your local `.env`** (see §3) and set
+`EXPO_PUBLIC_AUTH_PROVIDER=supabase` when you want to try Supabase sign-in.
+Until then the app keeps using Firebase.
+
+The dashboard steps are kept below for reference and for any future project.
 
 1. **Google Cloud Console** → APIs & Services → Credentials →
    Create credentials → OAuth client ID → **Web application**.
@@ -115,8 +124,17 @@ the auth phase begins, the app will read variables along these lines:
 
 ```
 EXPO_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon or publishable key>
+
+# Which backend serves sign-in. Omit it (or set `firebase`) to keep the
+# current, verified Firebase login. Set to `supabase` to use Supabase.
+EXPO_PUBLIC_AUTH_PROVIDER=supabase
 ```
+
+**`EXPO_PUBLIC_AUTH_PROVIDER` is the migration switch.** Firebase stays the
+default so the app never loses a working login while Supabase is being proven.
+Only the exact value `supabase` selects Supabase — a typo falls back to
+Firebase rather than half-enabling a backend with no credentials.
 
 The exact names will be confirmed when `services/supabase.ts` is written.
 Supabase Edge Functions receive `SUPABASE_URL`, `SUPABASE_ANON_KEY`,

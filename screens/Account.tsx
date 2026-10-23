@@ -22,7 +22,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import type { User } from 'firebase/auth';
+import type { AppUser } from '../types';
 import { useColors } from '../theme/ThemeContext';
 import { space, fontSize, fontWeight, radius, isDesktopWidth } from '../theme/tokens';
 import { Button } from '../components/Button';
@@ -30,7 +30,7 @@ import { LoadingState } from '../components/States';
 
 interface AccountScreenProps {
   /** The signed-in user, or null while auth state is still resolving. */
-  user: User | null;
+  user: AppUser | null;
   /** Invoked when the user taps Sign out. */
   onSignOut: () => void;
   /** True while the sign-out request is in flight. */

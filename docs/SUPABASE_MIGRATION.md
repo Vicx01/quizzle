@@ -493,18 +493,18 @@ the working Firebase state. There is no database to unwind.
 
 ## 13. Phased implementation sequence
 
-| #   | Phase                                 | Status             | Deliverable                                                                                  |
-| --- | ------------------------------------- | ------------------ | -------------------------------------------------------------------------------------------- |
-| 1   | Project + local setup                 | **Done** (adapted) | `supabase/migrations/`, env contract documented in `docs/SUPABASE_SETUP.md`. No Docker used. |
-| 2   | Schema + migrations                   | **Done**           | Five migration files; applied and verified on every test run                                 |
-| 3   | RLS policies + **executed** tests     | **Done**           | 74 executed assertions, plus mutation-checked so they fail when a policy is broken           |
-| 4   | Google-only auth                      | Next               | Supabase Auth wired; Firebase kept until verified                                            |
-| 5   | Profiles + quiz persistence           | Not started        | Owner CRUD, replaces the prototype alert                                                     |
-| 6   | Secure sharing + server-side grading  | Not started        | Edge Functions implementing `docs/SHARE_LINK_API.md`                                         |
-| 7   | Storage (conditional)                 | Not needed         | Owner decided against persistent storage                                                     |
-| 8   | Server-side AI + quotas               | Not started        | Edge Function behind `AIProvider`; server-enforced quotas                                    |
-| 9   | Docs cleanup + Firebase removal       | Not started        | Delete `firestore.rules`/`firebase.json`, drop the `firebase` dependency                     |
-| 10  | Final verification + migration report | Not started        | Full test run, actual counts, commit hashes                                                  |
+| #   | Phase                                 | Status             | Deliverable                                                                                     |
+| --- | ------------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------- |
+| 1   | Project + local setup                 | **Done** (adapted) | `supabase/migrations/`, env contract documented in `docs/SUPABASE_SETUP.md`. No Docker used.    |
+| 2   | Schema + migrations                   | **Done**           | Five migration files; applied and verified on every test run                                    |
+| 3   | RLS policies + **executed** tests     | **Done**           | 74 executed assertions, plus mutation-checked so they fail when a policy is broken              |
+| 4   | Google-only auth                      | **In progress**    | Supabase Auth implemented behind a switch; Firebase still default; **not yet run by the owner** |
+| 5   | Profiles + quiz persistence           | Not started        | Owner CRUD, replaces the prototype alert                                                        |
+| 6   | Secure sharing + server-side grading  | Not started        | Edge Functions implementing `docs/SHARE_LINK_API.md`                                            |
+| 7   | Storage (conditional)                 | Not needed         | Owner decided against persistent storage                                                        |
+| 8   | Server-side AI + quotas               | Not started        | Edge Function behind `AIProvider`; server-enforced quotas                                       |
+| 9   | Docs cleanup + Firebase removal       | Not started        | Delete `firestore.rules`/`firebase.json`, drop the `firebase` dependency                        |
+| 10  | Final verification + migration report | Not started        | Full test run, actual counts, commit hashes                                                     |
 
 Phase 4 is the first that changes user-visible behaviour. Phases 1–3 are
 complete and touched no application code.

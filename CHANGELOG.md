@@ -1212,3 +1212,70 @@ scores" control was proven on the real service, not only in the local engine.
 
 Database suite 74 passed, 0 failed. App suite 149 passed, 14 suites.
 Typecheck clean, lint 0 errors and 7 pre-existing warnings, prettier clean.
+
+## 2026-10-23 — Supabase authentication implemented (not yet run)
+
+Google OAuth was confirmed enabled on the hosted project through the API:
+`external_google_enabled: true`, client ID and secret set, and
+`external_google_skip_nonce_check: false` (nonce check left on, the more secure
+setting). That removed the last blocker on the auth phase.
+
+### Added
+
+- `services/configStatus.ts` — configuration diagnostic types shared by both
+  providers (`ConfigProblem`, `ConfigStatus`, `looksLikePlaceholder`,
+  `looksLikeServiceRoleKey`), so the sign-in screen renders one checklist
+  regardless of which backend is active.
+- `services/supabase.ts` — lazy Supabase client plus configuration diagnostics.
+- `services/authSupabase.ts` — Google OAuth, session observation, sign-out and
+  post-redirect URL cleanup.
+
+### Changed
+
+- `services/auth.ts` became a **provider dispatcher**. `EXPO_PUBLIC_AUTH_PROVIDER`
+  selects the backend. **Firebase is the default and remains so until the owner
+  verifies Supabase sign-in**, so the app never loses a working login and never
+  runs both providers at once. Only the exact value `supabase` switches; any
+  other value, including a typo, falls back to Firebase.
+- `services/firebase.ts` — diagnostic types now come from `configStatus.ts` and
+  are re-exported, so existing imports keep working.
+- `App.tsx`, `screens/Account.tsx` — consume a provider-neutral `AppUser`
+  instead of Firebase's `User`.
+- `types/index.ts` — added `AuthProvider` and `AppUser`.
+- `package.json` — added `@supabase/supabase-js`.
+
+### Security
+
+`looksLikeServiceRoleKey()` blocks the single most dangerous configuration
+mistake available here: putting the service-role key in an `EXPO_PUBLIC_*`
+variable. That key bypasses Row Level Security on every table. New-style
+`sb_secret_` keys are caught by prefix; legacy keys are caught by **decoding the
+JWT payload** and reading the `role` claim. A substring search on the raw token
+would have missed it, because the claims are base64-encoded — this was found by
+a failing test rather than by inspection.
+
+### Tests
+
+App suite **168 passed** across 15 suites (was 149 across 14). Added 19:
+10 covering Supabase configuration (valid, missing, placeholder, malformed URL,
+and both service-role key shapes) and 9 covering provider selection and
+Supabase error mapping. Database suite still 74 passed.
+
+Two regressions were introduced and fixed during this work:
+`describeAuthErrorWithCode(new Error('boom'))` printed a bogus
+`Error code: Error` because of a fallback to the error's `name`; and
+`App.test.tsx` failed because its mock did not provide the new
+`getAuthConfigStatus` export.
+
+### Verified
+
+Web bundle compiles: 287 modules (was 271), 1.5 MB. Typecheck clean, lint 0
+errors and 7 pre-existing warnings, prettier clean.
+
+### Not verified
+
+**Supabase Google sign-in has never been executed.** The sandbox has no network
+path to Google, so no OAuth flow can run here. The Supabase auth path is
+unproven until the owner runs it. This is safe precisely because Firebase is
+still the default — until `EXPO_PUBLIC_AUTH_PROVIDER=supabase` is set, user-facing
+behaviour is unchanged.

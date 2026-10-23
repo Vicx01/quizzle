@@ -18,6 +18,11 @@ import type { Auth } from 'firebase/auth';
 import { getAuth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import { getFirestore } from 'firebase/firestore';
+import { looksLikePlaceholder, type ConfigProblem, type ConfigStatus } from './configStatus';
+
+// Re-exported so existing imports of these types from this module keep working
+// now that they live in a shared, provider-neutral home.
+export { looksLikePlaceholder, type ConfigProblem, type ConfigStatus };
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -76,35 +81,6 @@ export const RECOMMENDED_FIREBASE_ENV = [
   'EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
 ] as const;
 
-/**
- * Substrings that indicate a value was never filled in — for example leaving
- * template text like `your-project-id` in `.env`. Catching these turns a
- * confusing Firebase runtime error into a clear "you forgot to set this"
- * message.
- */
-const PLACEHOLDER_MARKERS = [
-  'your-',
-  'your_',
-  'placeholder',
-  'changeme',
-  'change-me',
-  'xxx',
-  'todo',
-  '<',
-  '>',
-  'example',
-];
-
-/** True if the value still looks like an unfilled template placeholder. */
-export function looksLikePlaceholder(value: string | undefined): boolean {
-  if (!value) return false;
-  const v = value.trim().toLowerCase();
-  if (!v) return false;
-  // A run of zeros (e.g. appId "1:000000000000:...") is also a placeholder.
-  if (/^1?:?0{6,}/.test(v.replace(/[^0-9:]/g, ''))) return true;
-  return PLACEHOLDER_MARKERS.some(marker => v.includes(marker));
-}
-
 /** Firebase project IDs: 6–30 chars, lowercase letters, digits, hyphens. */
 function isValidProjectId(value: string): boolean {
   return /^[a-z][a-z0-9-]{4,29}$/.test(value);
@@ -114,22 +90,6 @@ function isValidProjectId(value: string): boolean {
 function isValidAuthDomain(value: string): boolean {
   return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(value) && !/\s/.test(value);
 }
-
-export type ConfigProblem = {
-  key: string;
-  /** 'missing' | 'placeholder' | 'invalid' | 'recommended-missing' */
-  kind: 'missing' | 'placeholder' | 'invalid' | 'recommended-missing';
-  message: string;
-};
-
-export type ConfigStatus = {
-  /** True when every required variable is present and looks usable. */
-  ok: boolean;
-  /** Blocking problems (missing, placeholder, or malformed). */
-  errors: ConfigProblem[];
-  /** Non-blocking gaps. */
-  warnings: ConfigProblem[];
-};
 
 /**
  * Full configuration diagnostic. This is the single source of truth used by the

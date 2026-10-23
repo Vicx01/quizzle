@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
-import type { User } from 'firebase/auth';
+import type { AppUser } from '../../types';
 import { AccountScreen, getInitials } from '../Account';
 import { ThemeProvider } from '../../theme/ThemeContext';
 
@@ -15,14 +15,15 @@ function Harness({ children }: { children: React.ReactNode }) {
   return <ThemeProvider>{children}</ThemeProvider>;
 }
 
-function makeUser(overrides: Partial<User> = {}): User {
+function makeUser(overrides: Partial<AppUser> = {}): AppUser {
   return {
-    uid: 'uid-1',
+    id: 'uid-1',
     displayName: 'Ada Lovelace',
     email: 'ada@example.com',
     photoURL: null,
+    provider: 'firebase',
     ...overrides,
-  } as unknown as User;
+  };
 }
 
 function renderAccount(overrides: Partial<React.ComponentProps<typeof AccountScreen>> = {}) {

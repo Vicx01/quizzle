@@ -27,6 +27,7 @@ jest.mock('../services/auth', () => ({
   getCurrentOrigin: jest.fn(() => null),
   isEmbeddedInFrame: jest.fn(() => false),
   signOut: jest.fn(() => Promise.resolve()),
+  getAuthConfigStatus: jest.fn(() => ({ ok: true, errors: [], warnings: [] })),
 }));
 
 jest.mock('../services/firebase', () => ({
@@ -37,10 +38,11 @@ const mockOnAuth = onAuthStateChanged as jest.Mock;
 const mockSignOut = signOut as jest.Mock;
 
 const USER = {
-  uid: 'uid-1',
+  id: 'uid-1',
   displayName: 'Ada Lovelace',
   email: 'ada@example.com',
   photoURL: null,
+  provider: 'firebase',
 };
 
 /** The most recently registered auth listener (one per render). */

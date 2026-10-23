@@ -7,6 +7,31 @@
 // Theme
 export type ThemeMode = 'light' | 'dark' | 'system';
 
+// Authentication
+/**
+ * Which backend is currently serving sign-in.
+ *
+ * During the Firebase -> Supabase migration both exist. Firebase stays the
+ * default until Supabase sign-in has been verified by the owner, so the app
+ * never loses a working login while the replacement is being proven.
+ */
+export type AuthProvider = 'firebase' | 'supabase';
+
+/**
+ * Provider-neutral signed-in identity.
+ *
+ * Screens depend on this rather than on Firebase's `User` or Supabase's `User`.
+ * Without it, swapping providers would mean rewriting every screen that shows
+ * who is signed in — and the two types disagree on basics like `uid` vs `id`.
+ */
+export interface AppUser {
+  id: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  provider: AuthProvider;
+}
+
 // Quiz
 export type QuizFormat = 'MCQ' | 'theory' | 'mixed';
 export type Difficulty = 'Easy' | 'Medium' | 'Hard';
