@@ -795,3 +795,78 @@ files) · prettier clean · **149 tests / 14 suites** (was 128 / 12).
 Firestore security rules — held as a **separate, reviewable step** per the
 owner's instruction. No user data is stored and no rules are deployed.
 AI-provider integration still not started.
+
+---
+
+## 2026-10-23 — Firestore security rules PREPARED (not deployed, not verified)
+
+Held as a separate, reviewable step at the owner's request. **No rules were
+deployed and no user data was written.**
+
+### `firestore.rules` (new)
+
+Covers all five collections in ARCHITECTURE.md §3.9:
+
+| Collection     | Client access                                                  |
+| -------------- | -------------------------------------------------------------- |
+| `users/{uid}`  | read/write own doc only; email immutable; client delete denied |
+| `quizzes`      | owner-only, plus public read while a live share link exists    |
+| `quizAttempts` | own attempts, or attempts on a quiz you own                    |
+| `shareLinks`   | read by anyone; **no client writes** (server-only)             |
+| `rateLimits`   | **no client access at all**                                    |
+
+Key decisions:
+
+- **Deny by default** — a `match /{document=**}` catch-all denies anything not
+  explicitly allowed, including collections added later.
+- **Ownership from `request.auth.uid` only.** A client-supplied `ownerId` cannot
+  grant access: create requires `ownerId == uid`, and `ownerId` is immutable so
+  a quiz cannot be transferred by an update.
+- **Email is immutable** on the user doc, so a user cannot swap in another
+  identity's address.
+- **Public sharing** is resolved by looking up `shareLinks/{shareToken}` from the
+  quiz's own `shareToken` field, checking revoked/expired. Rules cannot read a
+  token supplied by the client, so this is the only workable shape.
+- Client delete on `users` is denied (deletion must fan out to quizzes,
+  attempts and share links, so it belongs server-side).
+
+### `tests/rules/firestore.rules.test.ts` (new)
+
+24 emulator tests using `@firebase/rules-unit-testing` (added as a devDependency,
+v5.0.2), covering cross-user isolation, ownership forgery, ownership transfer,
+over-long titles, share-link active/revoked/expired, `isPublic: false` with a
+live token, server-only collections, and the default deny.
+
+**These tests have NOT been run.** They require the Firestore emulator.
+
+### Why they could not be verified here
+
+No Java, no `firebase-tools`, and no network access to download the emulator
+(`storage.googleapis.com` unreachable). So the rules are **syntactically
+unchecked** and the tests are **unexecuted**. Verifying is the owner's next
+action:
+
+```bash
+firebase emulators:start --only firestore --project quizzle-rules-test
+npm run test:rules
+```
+
+The rules tests are excluded from `npm test` via `testPathIgnorePatterns`, with
+a separate `jest.rules.config.js` and a `test:rules` script, so a missing
+emulator cannot fail the app suite. Confirmed with `--listTests`: 14 files in
+the default run, 1 in the rules run.
+
+`firebase.json` (new) points Firestore at `firestore.rules` and pins the
+emulator to **port 8089** to avoid colliding with the Expo web dev server on 8080.
+
+### Checks (app suite)
+
+typecheck clean · eslint **0 errors / 7 warnings** (all pre-existing) · prettier
+clean · **149 tests / 14 suites** (unchanged — rules tests excluded by design).
+
+### Still outstanding
+
+- **Review and verify the rules, then deploy** (`firebase deploy --only
+firestore:rules`).
+- Firestore is still unused by the app — no data layer, nothing stored.
+- AI-provider integration not started.

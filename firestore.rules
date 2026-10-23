@@ -1,0 +1,152 @@
+// ---------------------------------------------------------------------------
+// Quizzle — Firestore security rules
+//
+// STATUS: WRITTEN FOR REVIEW. NOT DEPLOYED.
+// Do not deploy until these have been reviewed and verified.
+// Nothing currently writes to Firestore, so deploying is not yet required.
+//
+// Model (ARCHITECTURE.md §3.9): users, quizzes, quizAttempts, shareLinks,
+// rateLimits.
+//
+// Principles applied here:
+//  - Deny by default. The catch-all at the bottom denies everything that is
+//    not explicitly allowed, including any collection added later.
+//  - Ownership is derived from request.auth.uid, never from a client-supplied
+//    field. A client passing ownerId: <someone else> cannot gain access.
+//  - Server-only collections (shareLinks writes, rateLimits) deny all client
+//    access. The server uses the Admin SDK, which bypasses these rules.
+//  - Email is not client-mutable, so a user cannot seize another identity's
+//    email on their own profile document.
+// ---------------------------------------------------------------------------
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------- helpers
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function doc(path) {
+      return get(/databases/$(database)/documents/$(path)).data;
+    }
+
+    function existsDoc(path) {
+      return exists(/databases/$(database)/documents/$(path));
+    }
+
+    // True when the signed-in user owns the referenced quiz.
+    function isQuizOwner(quizId) {
+      return isSignedIn()
+        && existsDoc(/quizzes/$(quizId))
+        && doc(/quizzes/$(quizId)).get('ownerId', null) == uid();
+    }
+
+    // A shared quiz is readable by anyone holding the link, provided the
+    // share link row exists, has not been revoked, and has not expired.
+    // The quiz stores its own shareToken, so the rule can look the link up
+    // without the client passing the token in a way rules could not read.
+    function shareLinkIsActive(token) {
+      return existsDoc(/shareLinks/$(token))
+        && doc(/shareLinks/$(token)).get('revokedAt', null) == null
+        && doc(/shareLinks/$(token)).get('expiresAt', null) != null
+        && doc(/shareLinks/$(token)).expiresAt > request.time;
+    }
+
+    function isSharedQuiz() {
+      return resource.data.get('deletedAt', null) == null
+        && resource.data.get('isPublic', false) == true
+        && resource.data.get('shareToken', null) != null
+        && shareLinkIsActive(resource.data.shareToken);
+    }
+
+    // --------------------------------------------------------------- users
+    // Document ID is the Firebase Auth UID.
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && uid() == userId;
+
+      allow create: if isSignedIn()
+        && uid() == userId
+        && request.resource.data.get('email', '') is string
+        && request.resource.data.get('createdAt', null) != null;
+
+      // Email is immutable: it identifies the account and must not be
+      // swapped to someone else's address.
+      allow update: if isSignedIn()
+        && uid() == userId
+        && request.resource.data.email == resource.data.email;
+
+      // Account deletion is a server-side operation (it must also remove
+      // quizzes, attempts and share links), so clients cannot delete.
+      allow delete: if false;
+    }
+
+    // ------------------------------------------------------------- quizzes
+
+    match /quizzes/{quizId} {
+      allow read: if isQuizOwner(quizId) || isSharedQuiz();
+
+      // Ownership is stamped from the auth UID, not taken from the client.
+      allow create: if isSignedIn()
+        && request.resource.data.get('ownerId', null) == uid()
+        && request.resource.data.get('title', '') is string
+        && request.resource.data.get('title', '').size() <= 200
+        && request.resource.data.get('deletedAt', null) == null;
+
+      // ownerId is immutable, so ownership cannot be transferred by a write.
+      allow update: if isQuizOwner(quizId)
+        && request.resource.data.ownerId == resource.data.ownerId;
+
+      allow delete: if isQuizOwner(quizId);
+    }
+
+    // -------------------------------------------------------- quizAttempts
+
+    match /quizAttempts/{attemptId} {
+      // Readable by the person who attempted it, or by the quiz owner.
+      allow read: if isSignedIn()
+        && (resource.data.get('userId', null) == uid()
+            || isQuizOwner(resource.data.get('quizId', '')));
+
+      allow create: if isSignedIn()
+        && request.resource.data.get('userId', null) == uid()
+        && request.resource.data.get('quizId', '') is string
+        && existsDoc(/quizzes/$(request.resource.data.quizId));
+
+      // Only the author of the attempt may modify or remove it.
+      allow update, delete: if isSignedIn()
+        && resource.data.get('userId', null) == uid();
+    }
+
+    // ---------------------------------------------------------- shareLinks
+    // Readable by anyone: that is how a public token resolves to a quiz.
+    // Writable by nobody from a client — only the server (Admin SDK).
+
+    match /shareLinks/{token} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------- rateLimits
+    // Server-only bookkeeping. No client access of any kind.
+
+    match /rateLimits/{limitId} {
+      allow read, write: if false;
+    }
+
+    // ------------------------------------------------------------ default
+    // Deny everything not matched above, including future collections.
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -18,6 +18,12 @@ module.exports = {
     '<rootDir>/services',
   ],
   testMatch: ['**/__tests__/**/*.[jt]s?(x)', '**/*.test.[jt]s?(x)'],
+
+  // Firestore security-rule tests need the Firestore emulator, which is not
+  // available in CI or in this sandbox. They are excluded here so `npm test`
+  // stays green without one, and run explicitly via `npm run test:rules`
+  // (see jest.rules.config.js).
+  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/tests/rules/'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
 
   moduleNameMapper: {

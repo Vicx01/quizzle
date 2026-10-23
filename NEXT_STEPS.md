@@ -30,10 +30,46 @@ Confirmed:
 2. **Firestore is initialised (`getFirebaseFirestore()`) but never used.** There
    is no data layer. **Nothing is written to Firestore** — deliberate until
    security rules exist.
-3. **No Firestore security rules exist.** There is no data-access control. These
-   must be written **and reviewed/verified** before any user data is stored.
-   Kept as a separate, reviewable step at the owner's request.
+3. **Firestore security rules are WRITTEN but NOT DEPLOYED and NOT VERIFIED.**
+   `firestore.rules` plus an emulator test suite await review. **Nothing is
+   written to Firestore and no rules are deployed** until they have been
+   reviewed and verified. Kept as a separate step at the owner's request.
+   See "Firestore security rules (awaiting review)" below.
 4. **Native (iOS/Android) auth has never been built.**
+
+### Firestore security rules (awaiting review)
+
+`firestore.rules` is written and covers all five collections in
+ARCHITECTURE.md §3.9, with a deny-by-default catch-all:
+
+| Collection     | Client access                                                  |
+| -------------- | -------------------------------------------------------------- |
+| `users/{uid}`  | read/write own doc only; email immutable; client delete denied |
+| `quizzes`      | owner-only, plus public read while a live share link exists    |
+| `quizAttempts` | own attempts, or attempts on a quiz you own                    |
+| `shareLinks`   | read by anyone; **no client writes** (server-only)             |
+| `rateLimits`   | **no client access at all**                                    |
+
+Ownership always derives from `request.auth.uid`; a client-supplied `ownerId`
+cannot grant access, and `ownerId` is immutable so a quiz cannot be transferred
+by a write.
+
+**Not verified.** The emulator cannot run in this sandbox (no Java, no
+firebase-tools, and no network access to download the emulator), so the rules
+are **syntactically unchecked** and `tests/rules/firestore.rules.test.ts` has
+**never been executed**. To verify locally:
+
+```bash
+firebase emulators:start --only firestore --project quizzle-rules-test
+npm run test:rules
+```
+
+Those tests are excluded from `npm test` (`testPathIgnorePatterns`) so a missing
+emulator cannot fail the app suite. Only deploy after review:
+
+```bash
+firebase deploy --only firestore:rules
+```
 
 ### Environment file convention (2026-10-23)
 
@@ -231,7 +267,7 @@ npm run web            # expo start --web
 Not yet runnable / not yet run:
 
 - ~~Firebase Auth live test~~ **DONE — owner confirmed a successful sign-in.**
-- Firestore rules — **next step, separate reviewable change**: write rules + tests, review, **then** deploy. No user data is stored until then.
+- Firestore rules — **written, awaiting review**: `firestore.rules` + `tests/rules/firestore.rules.test.ts`. Run `npm run test:rules` against the emulator, then review, then deploy. No user data is stored until then.
 - AI provider live calls (needs keys)
 - `eas build` for native (needs EAS account)
 - Visual/browser verification (needs a browser)
