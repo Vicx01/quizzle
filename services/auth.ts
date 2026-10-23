@@ -4,9 +4,13 @@
  * Firebase Authentication with Google sign-in (web primary, native later).
  * Google-only sign-in — no email/password, no social alternatives.
  *
- * STATUS: web flow implemented but UNVERIFIED. It has never been executed
- * against a real Firebase project. Do not claim sign-in works until it has been
- * exercised successfully — see docs/FIREBASE_SETUP.md for the verification steps.
+ * STATUS: VERIFIED. The owner ran the flow against the live Firebase project and
+ * confirmed a successful Google sign-in. Firestore is initialised but unused.
+ *
+ * Known gaps:
+ *  - `signOut()` is exported but not wired to any UI, so a signed-in user
+ *    cannot sign out yet.
+ *  - No Firestore security rules exist, so there is no data-access control.
  */
 
 import type { User } from 'firebase/auth';

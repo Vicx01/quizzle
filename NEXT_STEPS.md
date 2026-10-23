@@ -2,77 +2,44 @@
 
 **Current phase:** Phase 3 — application foundation (COMPLETE, accessibility fixes applied)
 
-**Status:** Foundation built and all checks green. **WCAG AA contrast RESOLVED.** **Firebase credentials supplied and config verified locally; the Google sign-in flow is still UNVERIFIED and needs a browser test.** AI/backend deliberately NOT implemented.
+**Status:** Foundation built and all checks green. **WCAG AA contrast RESOLVED.** **Google sign-in VERIFIED — the owner ran the flow and confirmed a successful sign-in.** Not yet done: sign-out is not wired to any UI, Firestore is unused, no Firestore security rules exist, and the server-side API layer (AI provider) is deliberately NOT implemented.
 
-**Last updated:** 2026-10-22
+**Last updated:** 2026-10-23
 
 **Branch:** `arena/9131a5e6-quizzle`
 
 ---
 
-## Current status — Firebase configured, sign-in UNVERIFIED
+## Current status — Google sign-in VERIFIED (2026-10-23)
 
-Credentials are now supplied in `.env` (gitignored, never committed). The config
-check passes: `getFirebaseConfigStatus()` returns `ok: true` with no errors and
-no warnings, and Expo inlines all values into the bundle.
+**The owner ran the flow and confirmed a successful Google sign-in.** This was
+the last open blocker from Phase 3: authentication is no longer a question mark,
+and every user-scoped feature is now unblocked.
 
-**The Google sign-in flow has still not been executed.** It must be verified in a
-browser (see below). Do not describe authentication as working until step 5
-succeeds.
+Confirmed:
 
-### Add this domain to Firebase — likely the remaining blocker
+- Firebase credentials live in `.env` (gitignored, never committed).
+- `getFirebaseConfigStatus()` returns `ok: true`; Expo inlines all values.
+- Google sign-in completes and lands on the Generate screen.
 
-Firebase → **Authentication → Settings → Authorized domains → Add domain**:
+### Gaps found while reviewing the now-working flow
 
-```
-8080-ihvd80mwkmpx5vxcn6r60.e2b.app
-```
+1. **`signOut()` is exported but never called anywhere.** A user can sign in but
+   has no way to sign out. The Account tab is still a placeholder.
+2. **Firestore is initialised (`getFirebaseFirestore()`) but never used.** There
+   is no data layer.
+3. **No Firestore security rules exist.** There is no data-access control. This
+   must be written **before** any user data is stored.
+4. **Native (iOS/Android) auth has never been built.**
 
-This is the current Arena preview host. **The sandbox ID changes between
-sessions**, so if sign-in later fails with `auth/unauthorized-domain`, re-read the
-origin from the error message the app prints and add that instead. Keep
-`localhost` in the list for local runs.
+### Verification details still to record
 
-### How to verify (requires your browser)
+Ask the owner, fill in below, then delete this note:
 
-1. Open the preview and confirm you see **"Sign in to Quizzle"** with a working
-   **Sign in with Google** button — _not_ the "Finish Firebase setup" checklist.
-2. Click it. Expect: Google account chooser → consent → back on the Generate screen.
-3. Reload — you should stay signed in.
-4. Firebase Console → Authentication → Users should show a new user.
-5. Report back, and the result will be recorded in `CHANGELOG.md`.
-
-If the popup hangs or is blocked, **open the preview URL in a normal browser tab**
-rather than the embedded iframe — embedded previews often block popups and
-third-party cookies, which breaks the Firebase popup flow.
-
-### Why it could not be verified here
-
-The sandbox cannot reach Firebase at all (outbound network is restricted to
-github/npm/pypi; `identitytoolkit.googleapis.com` and the auth domain both fail
-to connect). Config wiring was verified by running the real
-`getFirebaseConfigStatus()` against the supplied values, but the OAuth handshake
-can only be completed from a browser.
-
-### Console steps that were also required
-
-1. Authentication → Sign-in method → **Google → Enable**
-2. Authorized domains (above)
-3. Google Cloud → OAuth consent screen → add test users if External/Testing
-
-Full walkthrough: `docs/FIREBASE_SETUP.md`.
-
-### Security
-
-- `.env` is gitignored; only `.env.example` is tracked. Verified: no `.env` in
-  `git status`, no credential-shaped strings in tracked files.
-- Firebase web config is public by design; access is enforced by Firestore
-  security rules (**not yet written**) and the Authorized Domains allowlist.
-- These credentials were shared in conversation. They grant no data access by
-  themselves, but you can rotate the API key in Google Cloud Console if you want
-  them out of the chat history.
-
----
+- popup flow, or did it fall back to redirect?
+- did the session survive a page reload?
+- which origin was used — `localhost`, or the `8080-….e2b.app` preview host?
+- does the user appear in Firebase Console → Authentication → Users?
 
 ---
 
@@ -127,7 +94,9 @@ Design system defined in `DESIGN_BRIEF.md` and approved with conditions. Generat
 - **Visual rendering** — no browser in this sandbox; the bundle compiles but
   appearance is unconfirmed. **This is the main remaining gap.**
 - **Native iOS/Android** — never built or run. No native support is claimed.
-- **Firebase Auth / Firestore** — not configured; no live sign-in test.
+- **Firebase Auth** — **VERIFIED**: the owner completed a live Google sign-in.
+- **Firestore** — initialised but unused; **no security rules exist**, so there is
+  no data-access control.
 - **AI provider access** — no keys, no live calls.
 
 **Do not begin AI-provider integration** until accessibility and visual review
@@ -190,7 +159,9 @@ concrete requirement.
 
 - **Visual rendering** — no browser in this sandbox; bundle compiles but appearance is unconfirmed.
 - **Native iOS/Android** — never built or run. No native support is claimed.
-- **Firebase Auth / Firestore** — not configured; no live sign-in test.
+- **Firebase Auth** — **VERIFIED**: the owner completed a live Google sign-in.
+- **Firestore** — initialised but unused; **no security rules exist**, so there is
+  no data-access control.
 - **AI provider access** — no keys, no live calls.
 
 ---
@@ -243,8 +214,8 @@ npm run web            # expo start --web
 
 Not yet runnable / not yet run:
 
-- Firebase Auth live test (needs project + env vars)
-- Firestore rules deployment (`firebase deploy --only firestore:rules`)
+- ~~Firebase Auth live test~~ **DONE — owner confirmed a successful sign-in.**
+- Firestore rules deployment (`firebase deploy --only firestore:rules`) — **blocked: no rules file exists yet**
 - AI provider live calls (needs keys)
 - `eas build` for native (needs EAS account)
 - Visual/browser verification (needs a browser)

@@ -674,3 +674,44 @@ in a real browser tab and try sign-in there.
 
 tsc 0 errors · eslint 0 errors / 7 warnings · prettier clean · 128 tests / 12
 suites · bundle contains the new diagnostics and `window.self !== window.top`.
+
+---
+
+## 2026-10-23 — Google sign-in VERIFIED
+
+**The owner ran the flow and confirmed a successful Google sign-in.** This was
+the last open blocker from Phase 3, and the first time authentication has ever
+been exercised against the live Firebase project.
+
+Every previous entry described sign-in as prepared-but-unverified. That is no
+longer accurate, so the stale claims were corrected in:
+
+- `services/auth.ts` — the header `STATUS:` comment (said "never been executed
+  against a real Firebase project")
+- `docs/FIREBASE_SETUP.md` — document status and the implementation table
+- `README.md` — the project status note
+- `NEXT_STEPS.md` — status line, the old "sign-in UNVERIFIED / current blocker"
+  section (rewritten as "VERIFIED"), both "not verified" lists, and the
+  outstanding-commands list
+
+### Gaps found while reviewing the now-working flow
+
+These were not visible until sign-in actually worked:
+
+1. **`signOut()` is exported from `services/auth.ts` but called nowhere.** A
+   user can sign in and can never sign out. The Account tab is still a
+   placeholder.
+2. **Firestore is initialised (`getFirebaseFirestore()`) but never used** — no
+   data layer exists.
+3. **No Firestore security rules exist**, so there is no data-access control.
+   This must be written before any user data is stored.
+4. **Native iOS/Android auth has never been built.**
+
+### Verification details NOT yet recorded
+
+The owner confirmed success but these specifics were not captured:
+
+- popup flow, or did it fall back to redirect?
+- did the session survive a page reload?
+- which origin was used — `localhost` or the `8080-….e2b.app` preview host?
+- does the user appear in Firebase Console → Authentication → Users?

@@ -3,10 +3,13 @@
 AI-assisted quiz generator. React Native (Expo) app targeting web first, with
 iOS and Android planned.
 
-> **Status:** application foundation complete. Google sign-in is implemented and
-> configured, but **the sign-in flow has not yet been completed end to end** —
-> see [Firebase setup](docs/FIREBASE_SETUP.md). Firestore and the server-side API
-> layer are not implemented.
+> **Status:** application foundation complete. **Google sign-in works** — verified
+> against the live Firebase project. See
+> [Firebase setup](docs/FIREBASE_SETUP.md).
+>
+> Not yet done: sign-out is not wired to any UI, Firestore is unused, **no
+> Firestore security rules exist**, and the server-side API layer (which would
+> call an AI provider) is not implemented.
 
 ---
 

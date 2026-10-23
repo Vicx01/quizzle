@@ -1,8 +1,14 @@
 # Firebase Setup — Quizzle
 
-**Status:** setup instructions complete. **The Google sign-in flow is NOT yet
-verified** — it has never run against a real Firebase project. This document
-explains how to configure Firebase and how to verify the flow yourself.
+**Status:** setup instructions complete. **The Google sign-in flow is
+VERIFIED** — the owner ran it against the live Firebase project and confirmed a
+successful sign-in.
+
+Still open: `signOut()` is not wired to any UI (a signed-in user cannot sign
+out), and **no Firestore security rules exist**, so there is no data-access
+control yet.
+
+This document explains how to configure Firebase and how to verify the flow.
 
 Read `SECURITY` below before entering any values.
 
@@ -10,15 +16,17 @@ Read `SECURITY` below before entering any values.
 
 ## 1. What is already implemented
 
-| Piece                                                  | Location               | Status                      |
-| ------------------------------------------------------ | ---------------------- | --------------------------- |
-| Firebase app init from env vars                        | `services/firebase.ts` | Implemented                 |
-| Config diagnostics (missing / placeholder / malformed) | `services/firebase.ts` | Implemented, tested         |
-| Google sign-in (popup + redirect fallback)             | `services/auth.ts`     | Implemented, **unverified** |
-| Actionable error mapping                               | `services/auth.ts`     | Implemented, tested         |
-| Sign-in screen + setup checklist                       | `screens/SignIn.tsx`   | Implemented, tested         |
-| Firestore                                              | —                      | **Not implemented**         |
-| Native (iOS/Android) auth                              | —                      | **Not implemented**         |
+| Piece                                                  | Location               | Status                        |
+| ------------------------------------------------------ | ---------------------- | ----------------------------- |
+| Firebase app init from env vars                        | `services/firebase.ts` | Implemented                   |
+| Config diagnostics (missing / placeholder / malformed) | `services/firebase.ts` | Implemented, tested           |
+| Google sign-in (popup + redirect fallback)             | `services/auth.ts`     | Implemented, **VERIFIED**     |
+| Actionable error mapping                               | `services/auth.ts`     | Implemented, tested           |
+| Sign-in screen + setup checklist                       | `screens/SignIn.tsx`   | Implemented, tested           |
+| Sign out                                               | `services/auth.ts`     | Exported, **not wired to UI** |
+| Firestore                                              | —                      | Initialised, **unused**       |
+| Firestore security rules                               | —                      | **Not implemented**           |
+| Native (iOS/Android) auth                              | —                      | **Not implemented**           |
 
 Nothing here contacts Firebase at build or test time. All 27 service tests run
 without credentials.
