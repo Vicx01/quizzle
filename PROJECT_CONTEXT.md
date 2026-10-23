@@ -197,8 +197,18 @@ foundation**. This is schema-only and is fully separated from the running app.
   The suite is mutation-checked: deliberately breaking any of six controls
   makes it fail.
 
+**Deployed to the hosted Supabase project** `quizzle`
+(`ppswtryoescehrytxvsh`, eu-west-1, PostgreSQL 17.11). All five migrations are
+applied, RLS is verified on all nine tables, and live security behaviour was
+tested on the hosted database inside rolled-back transactions. A follow-up
+count confirmed zero rows and zero users remained. The hosted results match the
+local suite, including a `42501` rejection of a client attempt to insert its
+own quiz score, and the profile-bootstrap trigger firing against the real
+GoTrue schema.
+
 **No application code was changed and Firebase authentication is untouched and
-still working.** No Supabase project exists yet and nothing is deployed.
+still working.** Local migration files were renamed to the versions Supabase
+assigned, so `supabase db push` treats them as already applied.
 
 See `docs/SUPABASE_MIGRATION.md` (plan) and `docs/SUPABASE_SETUP.md`
 (project setup) for detail.
@@ -216,8 +226,9 @@ See `NEXT_STEPS.md` for the Phase 4 acceptance criteria and the blocking decisio
 - ~~**Persistent document storage**~~ — RESOLVED (2026-10-23): not needed. Documents are processed in memory and discarded; no Storage bucket is created.
 - ~~**Docker / local Supabase stack**~~ — RESOLVED (2026-10-23): not required. Database tests run on PGlite inside Node.
 - ~~**Clean migration vs dual-run**~~ — RESOLVED (2026-10-23): clean swap; there is no production data to migrate.
-- **Create the Supabase project** and supply its URL and anon key. Blocks the auth phase, not the database phase.
-- **Apply the migrations to a real Supabase project** and re-run the RLS verification checks in `docs/SUPABASE_SETUP.md` §5.
+- ~~**Create the Supabase project**~~ — RESOLVED (2026-10-23): project `quizzle` exists and the migrations are applied.
+- ~~**Apply the migrations to a real Supabase project**~~ — RESOLVED (2026-10-23): applied and verified on the hosted database.
+- **Create the Google OAuth client** (Google Cloud Console) and enable the Google provider in Supabase. This is the only blocker for the auth phase.
 - **Schedule the 30-day share-link sweep.** Eligibility is encoded in the database; the job that performs the delete is not built.
 - AI provider selection after live free-tier verification (NVIDIA NIM / GroqCloud / Mistral).
 - File size, text length, generation frequency, and storage quotas (not yet finalised).

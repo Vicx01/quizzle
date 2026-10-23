@@ -2,7 +2,7 @@
 
 **Current phase:** Supabase migration — Phase 1 database foundation (COMPLETE). Phase 2 (Google-only Supabase Auth) is next.
 
-**Status:** The Supabase PostgreSQL schema and RLS policies are implemented and covered by 74 executed tests. Firebase authentication is untouched and still working. No Supabase project has been created and nothing is deployed.
+**Status:** The Supabase PostgreSQL schema and RLS policies are implemented, covered by 74 executed tests, **applied to the hosted Supabase project `quizzle` (`ppswtryoescehrytxvsh`) and verified on it directly**. Firebase authentication is untouched and still working. The only remaining blocker for the auth phase is Google OAuth, which needs credentials created in the Google Cloud Console.
 
 **Last updated:** 2026-10-23
 
@@ -12,9 +12,9 @@
 
 ## Current status — Supabase database foundation COMPLETE (2026-10-23)
 
-Phase 1 of the Firebase → Supabase migration is done. It is **database-only**:
-no application code changed, Firebase still handles sign-in, and no migration
-has been applied to any Supabase project.
+Phase 1 of the Firebase → Supabase migration is done and deployed. It is
+**database-only**: no application code changed, and Firebase still handles
+sign-in.
 
 ### What was built
 
@@ -24,6 +24,12 @@ has been applied to any Supabase project.
   migrations against real PostgreSQL (PGlite, WebAssembly). **No Docker, no
   local Supabase stack, no credentials, no network.**
 - `docs/SUPABASE_SETUP.md` — the dashboard steps only you can perform.
+
+### Project
+
+`quizzle` — ref `ppswtryoescehrytxvsh`, region `eu-west-1`, PostgreSQL 17.11,
+status `ACTIVE_HEALTHY`. Project URL
+`https://ppswtryoescehrytxvsh.supabase.co`.
 
 ### Security model in one paragraph
 
@@ -50,14 +56,37 @@ The database suite is **mutation-checked**: breaking any of six controls
 clients edit counters or access counts, or removing the 30-day share-link
 limit) makes it fail. The tests are not vacuous.
 
+### Verified on the hosted project (2026-10-23)
+
+All five migrations were applied to `ppswtryoescehrytxvsh` and the security
+behaviour was then tested **on that live database**. Every check ran inside a
+transaction that was rolled back; a follow-up count confirmed 0 users and 0
+rows, so nothing persisted.
+
+Confirmed live: RLS enabled on all nine tables with the expected policy counts;
+cross-user isolation; anonymous denial; `usage_counters` invisible to clients;
+clients unable to reset their own access counts or quotas; a client attempt to
+insert a quiz score **rejected with `42501`**; share tokens resolving correctly
+when valid and returning nothing when expired, revoked or unknown; access
+counts incrementing 1 then 2; and `soft_delete_quiz` returning `true` for the
+owner and `false` otherwise.
+
+The profile-bootstrap trigger also fires correctly against the real GoTrue
+`auth.users` schema — a behaviour the local engine could not prove, because it
+only emulates that schema.
+
+Full results are tabulated in `docs/SUPABASE_SETUP.md` §10.
+
 ### What is NOT verified
 
-- **Nothing has run against hosted Supabase.** No project exists yet. PGlite is
-  real PostgreSQL, but GoTrue, PostgREST and Supabase's managed `auth` schema
-  are emulated, not reproduced.
-- **No security behaviour is confirmed on a live database.** Passing here means
-  "the SQL behaves correctly on PostgreSQL", not "the production database is
-  secure".
+- **Google sign-in.** The provider is still disabled: email and phone were
+  switched off to enforce Google-only, and enabling Google needs OAuth
+  credentials created in the Google Cloud Console. **Until that is done, no
+  Supabase sign-in provider works.** The app is unaffected — it still signs in
+  through Firebase.
+- **PostgREST behaviour.** The hosted checks ran as SQL roles
+  (`anon` / `authenticated` / `service_role`). They do not exercise PostgREST's
+  request handling, so the app's actual client queries are still unproven.
 - The 45 Firestore rules tests remain **written and unexecuted**.
 
 ---

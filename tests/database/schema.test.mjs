@@ -40,12 +40,15 @@ async function publicTables() {
 // ===========================================================================
 describe('migrations and RLS coverage', () => {
   it('applies every migration in order', async () => {
+    // Filenames carry the migration versions Supabase assigned when they were
+    // applied to the hosted project, so `supabase db push` treats them as
+    // already applied instead of re-running them.
     assert.deepEqual(t.appliedMigrations, [
-      '20261023000001_core_schema.sql',
-      '20261023000002_rls_policies.sql',
-      '20261023000003_retention.sql',
-      '20261023000004_share_resolution.sql',
-      '20261023000005_soft_delete.sql',
+      '20261023112449_core_schema.sql',
+      '20261023112535_rls_policies.sql',
+      '20261023112557_retention.sql',
+      '20261023112608_share_resolution.sql',
+      '20261023112616_soft_delete.sql',
     ]);
   });
 

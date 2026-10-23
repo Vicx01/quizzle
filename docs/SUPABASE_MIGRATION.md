@@ -17,11 +17,11 @@ migrations have been applied to any Supabase project, and nothing is deployed.
 
 | Deliverable                        | Location                                                  |
 | ---------------------------------- | --------------------------------------------------------- |
-| Schema, constraints, triggers      | `supabase/migrations/20261023000001_core_schema.sql`      |
-| RLS policies                       | `supabase/migrations/20261023000002_rls_policies.sql`     |
-| Retention eligibility              | `supabase/migrations/20261023000003_retention.sql`        |
-| Share resolution + access counting | `supabase/migrations/20261023000004_share_resolution.sql` |
-| Soft delete                        | `supabase/migrations/20261023000005_soft_delete.sql`      |
+| Schema, constraints, triggers      | `supabase/migrations/20261023112449_core_schema.sql`      |
+| RLS policies                       | `supabase/migrations/20261023112535_rls_policies.sql`     |
+| Retention eligibility              | `supabase/migrations/20261023112557_retention.sql`        |
+| Share resolution + access counting | `supabase/migrations/20261023112608_share_resolution.sql` |
+| Soft delete                        | `supabase/migrations/20261023112616_soft_delete.sql`      |
 | Executed security tests            | `tests/database/rls.test.mjs` (74 assertions)             |
 | Executed schema/retention tests    | `tests/database/schema.test.mjs`                          |
 | Test harness (Supabase emulation)  | `tests/database/harness.mjs`                              |
@@ -34,6 +34,33 @@ Supabase stack, no network and no credentials.
 implemented migrations in four ways — see "Changes from the original proposal"
 in §5. Where this document and `supabase/migrations/` disagree, the migrations
 are authoritative.
+
+### Deployed and verified on hosted Supabase
+
+The owner created project `quizzle` (`ppswtryoescehrytxvsh`, eu-west-1,
+PostgreSQL 17.11) and all five migrations were applied to it through the
+Supabase API. The behaviour that was previously "not verified — no hosted
+project existed" has now been checked directly:
+
+- RLS enabled on all nine tables, with policy counts matching the local suite.
+- Cross-user isolation, anonymous denial, server-only counters, share expiry
+  and revocation, access counting and soft delete all behave as designed.
+- A client `insert` into `quiz_attempts` was rejected with `42501`, confirming
+  on the real service that clients cannot supply their own scores.
+- The profile-bootstrap trigger fires against the real GoTrue `auth.users`
+  schema — something the local engine could not prove.
+
+Every hosted check ran inside a transaction that was rolled back. A follow-up
+count confirmed 0 users and 0 rows across all tables, so **no test data was
+left behind**. Full results are tabulated in `docs/SUPABASE_SETUP.md` §10.
+
+Local migration filenames were renamed to the versions Supabase assigned
+(e.g. `20261023112449_core_schema.sql`) so that a future `supabase db push`
+recognises them as already applied instead of re-running them.
+
+**Still not verified:** Google sign-in. The provider cannot be configured
+through the API available here and needs OAuth credentials created in the
+Google Cloud Console by the owner.
 
 ---
 
@@ -238,7 +265,7 @@ Storage bucket is created.
 
 ## 6. Row Level Security (IMPLEMENTED)
 
-Authoritative source: `supabase/migrations/20261023000002_rls_policies.sql`.
+Authoritative source: `supabase/migrations/20261023112535_rls_policies.sql`.
 
 RLS is enabled on all nine tables. Every policy is scoped to a named role —
 never to `PUBLIC`, because `anon` and `authenticated` are both members of
@@ -488,11 +515,11 @@ complete and touched no application code.
 
 **Added**
 
-- `supabase/migrations/20261023000001_core_schema.sql`
-- `supabase/migrations/20261023000002_rls_policies.sql`
-- `supabase/migrations/20261023000003_retention.sql`
-- `supabase/migrations/20261023000004_share_resolution.sql`
-- `supabase/migrations/20261023000005_soft_delete.sql`
+- `supabase/migrations/20261023112449_core_schema.sql`
+- `supabase/migrations/20261023112535_rls_policies.sql`
+- `supabase/migrations/20261023112557_retention.sql`
+- `supabase/migrations/20261023112608_share_resolution.sql`
+- `supabase/migrations/20261023112616_soft_delete.sql`
 - `tests/database/harness.mjs`, `tests/database/rls.test.mjs`,
   `tests/database/schema.test.mjs`
 - `docs/SUPABASE_SETUP.md`

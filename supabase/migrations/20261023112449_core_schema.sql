@@ -129,7 +129,7 @@ create table public.question_answer_keys (
 -- ---------------------------------------------------------------------------
 -- Server-mediated sharing. There is deliberately no `is_public` flag and no
 -- client-readable policy that turns a token into quiz access: resolving a
--- token is a server-side operation (see 20261023000004).
+-- token is a server-side operation (see the share_resolution migration).
 
 create table public.share_links (
   id            uuid primary key default gen_random_uuid(),
@@ -166,7 +166,7 @@ create table public.share_links (
 
 create index share_links_quiz_idx on public.share_links (quiz_id);
 
--- Supports the retention sweep (see 20261023000003).
+-- Supports the retention sweep (see the retention migration).
 create index share_links_expires_idx on public.share_links (expires_at);
 create index share_links_revoked_idx on public.share_links (revoked_at)
   where revoked_at is not null;

@@ -65,7 +65,7 @@ create policy profiles_update_own on public.profiles
 -- trying to produce is one this policy says they may not see. PostgreSQL does
 -- not permit WITH CHECK on a SELECT policy, so the policy cannot be relaxed
 -- for that single operation. Soft deletion is therefore exposed through
--- public.soft_delete_quiz() in 20261023000005_soft_delete.sql.
+-- public.soft_delete_quiz() in 20261023112616_soft_delete.sql.
 create policy quizzes_select_own on public.quizzes
   for select to authenticated
   using (auth.uid() = owner_id and deleted_at is null);

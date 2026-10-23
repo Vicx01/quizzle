@@ -1137,3 +1137,78 @@ that performs a soft delete. Resolved with `public.soft_delete_quiz()`.
 - Nothing has been applied to or verified against hosted Supabase.
 - No document processing, no Storage bucket, no AI integration, no sharing or
   grading endpoints, no authentication changes.
+
+## 2026-10-23 — Database foundation deployed to hosted Supabase and verified
+
+The owner connected the Supabase integration, so the work previously recorded
+as "not verified — no hosted project existed" was completed against the live
+project.
+
+### Project
+
+`quizzle` — ref `ppswtryoescehrytxvsh`, region `eu-west-1`, PostgreSQL 17.11,
+status `ACTIVE_HEALTHY`. Project URL
+`https://ppswtryoescehrytxvsh.supabase.co`.
+
+### Applied
+
+All five migrations were applied through the Supabase API and recorded in
+migration history:
+
+- `20261023112449_core_schema.sql`
+- `20261023112535_rls_policies.sql`
+- `20261023112557_retention.sql`
+- `20261023112608_share_resolution.sql`
+- `20261023112616_soft_delete.sql`
+
+Local files were renamed from their `2026102300000N` placeholders to the
+versions Supabase assigned, so a future `supabase db push` recognises them as
+already applied instead of re-running them. In-file cross-references and the
+docs were updated to match; the original names remain in earlier changelog
+entries because that history is append-only.
+
+### Auth configuration applied
+
+- Site URL set to `http://localhost:8081`.
+- Redirect allow-list set to `http://localhost:8081/**`,
+  `http://localhost:19006/**` and `https://8081-*.e2b.app/**`.
+- Email and phone sign-in **disabled**, enforcing Google-only.
+
+A re-read of the config confirmed only these four fields changed; several
+fields showing `null` in the update response were an artefact of that response
+and were intact on re-read.
+
+### Verified on the hosted database
+
+Every check ran inside a transaction that was rolled back. A follow-up count
+then confirmed **0 users and 0 rows across all nine tables**, so no test data
+persisted.
+
+Confirmed live: 9 tables with RLS enabled and policy counts matching the local
+suite; profile auto-creation against the real GoTrue `auth.users` schema;
+cross-user isolation (each user sees 1 of 2 quizzes); zero visibility of answer
+keys, questions or share links for a non-owner and for `anon`; zero visibility
+of `usage_counters`; 0 rows updated when a client tried to reset its own access
+count or quota; a client `insert` into `quiz_attempts` carrying a score
+**rejected with `42501`**; valid share tokens resolving while expired, revoked
+and unknown ones return nothing; access counts incrementing 1 then 2 and
+returning `null` for an expired token; and `soft_delete_quiz` returning `true`
+for the owner and `false` for a non-owner or missing quiz.
+
+The `42501` rejection is the notable one: the "clients cannot supply their own
+scores" control was proven on the real service, not only in the local engine.
+
+### Still not done
+
+- **Google OAuth.** Cannot be configured through the API available here and
+  needs an OAuth client created in the Google Cloud Console by the owner. Until
+  it is enabled, **no Supabase sign-in provider works**, because email and
+  phone were deliberately disabled. The app is unaffected — it still signs in
+  through Firebase.
+- **PostgREST behaviour.** The hosted checks ran as SQL roles; they do not
+  exercise the app's actual client queries.
+
+### Checks
+
+Database suite 74 passed, 0 failed. App suite 149 passed, 14 suites.
+Typecheck clean, lint 0 errors and 7 pre-existing warnings, prettier clean.

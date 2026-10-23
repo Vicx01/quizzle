@@ -11,17 +11,61 @@ created yet, and no credentials exist in this repository. Everything in
 
 ---
 
+## 0. The project exists — current state (2026-10-23)
+
+The project has been created and the database foundation is **live on it**.
+
+| Item               | Value                                      |
+| ------------------ | ------------------------------------------ |
+| Project name       | `quizzle`                                  |
+| Project ref        | `ppswtryoescehrytxvsh`                     |
+| Region             | `eu-west-1`                                |
+| Project URL        | `https://ppswtryoescehrytxvsh.supabase.co` |
+| PostgreSQL         | 17.11                                      |
+| Status             | `ACTIVE_HEALTHY` (all services)            |
+| Migrations applied | 5 of 5                                     |
+| Rows of app data   | 0 — verified empty after testing           |
+
+### What has been done through the Supabase API
+
+- All five migrations applied and recorded in migration history.
+- RLS verified on all nine tables with the expected policy counts.
+- Live RLS behaviour tested on the hosted database (see §10).
+- Auth URL configuration set, and email/phone sign-in disabled so Google is
+  the only remaining provider.
+
+### What still needs you
+
+**Google OAuth.** It cannot be enabled through the API available here, and it
+needs credentials only you can create:
+
+1. **Google Cloud Console** → APIs & Services → Credentials →
+   Create credentials → OAuth client ID → **Web application**.
+2. Configure the **OAuth consent screen** (a mis-set consent screen caused a
+   403 during the original Firebase setup — it is not optional).
+3. Copy the **Client ID** and **Client Secret**.
+4. **Supabase Dashboard** → Authentication → Providers → **Google** → enable,
+   paste both values, and copy the callback URL it shows you:
+   `https://ppswtryoescehrytxvsh.supabase.co/auth/v1/callback`
+5. Add that callback URL to the Google client's **Authorised redirect URIs**.
+
+Until this is done, **no Supabase sign-in provider works at all** — email and
+phone were deliberately disabled to enforce Google-only. The app is unaffected
+because it still signs in through Firebase.
+
+---
+
 ## 1. What you (the owner) must do vs. what is already done
 
 | Step                                       | Who     | Status                |
 | ------------------------------------------ | ------- | --------------------- |
 | Write the database schema and RLS policies | Agent   | **Done**              |
 | Write and run database/security tests      | Agent   | **Done** (74 passing) |
-| Create the Supabase project                | **You** | Not started           |
-| Apply migrations to a project              | **You** | Not started           |
-| Provide project URL + anon key for `.env`  | **You** | Not started           |
-| Configure Google OAuth                     | **You** | Later phase           |
-| Wire the app to Supabase                   | Agent   | Later phase           |
+| Create the Supabase project                | Owner   | **Done**              |
+| Apply migrations to a project              | Agent   | **Done**              |
+| Configure auth URLs, disable email/phone   | Agent   | **Done**              |
+| Configure Google OAuth                     | **You** | **Blocks next phase** |
+| Wire the app to Supabase                   | Agent   | Next phase            |
 
 Nothing in this phase requires credentials, and nothing has been deployed.
 
@@ -87,11 +131,11 @@ Migrations live in `supabase/migrations/` and are plain PostgreSQL, applied in
 filename order:
 
 ```
-20261023000001_core_schema.sql
-20261023000002_rls_policies.sql
-20261023000003_retention.sql
-20261023000004_share_resolution.sql
-20261023000005_soft_delete.sql
+20261023112449_core_schema.sql
+20261023112535_rls_policies.sql
+20261023112557_retention.sql
+20261023112608_share_resolution.sql
+20261023112616_soft_delete.sql
 ```
 
 Postgres (not Supabase) tracks which migrations have already run, in the table
@@ -100,7 +144,7 @@ Postgres (not Supabase) tracks which migrations have already run, in the table
 ### Option A — SQL Editor (no installation required)
 
 1. Dashboard → **SQL Editor** → **New query**.
-2. Paste the contents of `20261023000001_core_schema.sql`, run it.
+2. Paste the contents of `20261023112449_core_schema.sql`, run it.
 3. Repeat for each file **in order**.
 
 This is the quickest path and is perfectly fine for a first project.
@@ -249,3 +293,37 @@ Not needed for Phase 1; recorded so they are not discovered late.
   discard, so documents are handled in memory inside a function. If that ever
   changes, a private bucket with user-scoped paths and short-lived signed URLs
   is required, and it needs a fresh owner decision.
+
+---
+
+## 10. Verification already carried out on the hosted database
+
+These checks ran against `ppswtryoescehrytxvsh` on 2026-10-23. Each test ran
+inside a transaction that was rolled back, so **no test data persisted** — a
+follow-up count confirmed 0 rows in every table and 0 users.
+
+| Check                                         | Expected      | Actual                         |
+| --------------------------------------------- | ------------- | ------------------------------ |
+| Tables created                                | 9             | 9                              |
+| RLS enabled on all tables                     | true          | true                           |
+| Policy count per table                        | matches local | matches local                  |
+| Profile auto-created on user insert           | yes           | yes (`display_name` populated) |
+| User A sees only own quizzes                  | 1 of 2        | 1                              |
+| User B sees A's answer keys                   | 0             | 0                              |
+| User B sees A's questions                     | 0             | 0                              |
+| anon sees quizzes / answer keys / share links | 0             | 0                              |
+| Client sees `usage_counters`                  | 0             | 0                              |
+| Client can reset own access count             | no            | 0 rows updated                 |
+| Client can reset own quota                    | no            | 0 rows updated                 |
+| Client can insert an attempt with a score     | no            | **rejected (42501)**           |
+| Valid share token resolves                    | 1 row         | 1                              |
+| Expired / revoked / unknown token resolves    | 0             | 0                              |
+| Access count increments 1 then 2              | yes           | 1, then 2                      |
+| Increment on expired token                    | null          | null                           |
+| `soft_delete_quiz` on own quiz                | true          | true                           |
+| `soft_delete_quiz` on other / missing quiz    | false         | false                          |
+
+The one result worth highlighting: the attempt insert was rejected with
+`42501 new row violates row-level security policy for table "quiz_attempts"`.
+That is the "clients cannot supply their own scores" control firing on real
+Supabase, not only in the local engine.
