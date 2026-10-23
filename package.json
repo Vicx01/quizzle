@@ -14,7 +14,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:rules": "jest --config jest.rules.config.js --runInBand",
-    "test:db": "node --test tests/database/rls.test.mjs tests/database/schema.test.mjs",
+    "test:db": "node --test tests/database/rls.test.mjs tests/database/schema.test.mjs tests/database/crud.test.mjs",
     "typecheck": "tsc --noEmit",
     "build:web": "expo export --platform web"
   },

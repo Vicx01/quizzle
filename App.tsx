@@ -16,6 +16,7 @@ import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { GenerateScreen } from './screens/Generate';
 import { SignInScreen } from './screens/SignIn';
 import { AccountScreen } from './screens/Account';
+import { HistoryScreen } from './screens/History';
 import {
   onAuthStateChanged,
   signInWithGoogle,
@@ -178,6 +179,8 @@ export default function App() {
             quota={null}
             offline={!isConnected}
           />
+        ) : activeTab === 'history' ? (
+          <HistoryScreen onTabChange={key => setActiveTab(key as TabKey)} offline={!isConnected} />
         ) : (
           <PlaceholderScreen label={activeTab} />
         )}

@@ -1,6 +1,6 @@
 # Quizzle — Next Steps
 
-**Current phase:** Supabase migration — Phase 4 (Google-only Supabase Auth) is **CODE COMPLETE**. Supabase is the sole authentication provider; Firebase Auth has been deleted. **A real-browser Google sign-in remains outstanding.**
+**Current phase:** Supabase migration — Phase 5 (Profiles + quiz persistence) is **IMPLEMENTED**. Owner CRUD works against the deployed schema and the History tab is live. Phase 4 (auth) is code-complete with **a real-browser Google sign-in still outstanding**.
 
 **Status:** The database foundation (Phases 1–3) is applied to the hosted project and verified on it. Supabase Auth is the only auth path in the code — the `EXPO_PUBLIC_AUTH_PROVIDER` switch is gone, `services/firebase.ts` is deleted, and no application code references Firebase. Every automated check passes. **A real Google OAuth flow has never been executed**, because this sandbox has no network path to Google or to the Supabase host.
 
@@ -87,39 +87,79 @@ evidence that the live flow works.
 
 ---
 
-## Next phase — Phase 5: Profiles + quiz persistence
+## Phase 5 — Profiles + quiz persistence (IMPLEMENTED 2026-10-23)
 
-Per `docs/SUPABASE_MIGRATION.md` §13, the phase after authentication is:
+Per `docs/SUPABASE_MIGRATION.md` §13 this is the phase after authentication:
 
-> **5 | Profiles + quiz persistence | Not started | Owner CRUD, replaces the
-> prototype alert**
+> **5 | Profiles + quiz persistence | Owner CRUD, replaces the prototype alert**
 
-This is next because it is the first phase that makes the deployed schema do
-work for the user: the `profiles`, `quizzes` and `questions` tables exist and are
-protected by RLS, but nothing writes to them yet — the Generate screen still
-shows a prototype alert. Authentication had to land first, because every one of
-those tables is scoped by `auth.uid()`.
+It came next because it is the first phase that makes the deployed schema do
+work for the user: the `profiles`, `quizzes` and `questions` tables existed and
+were protected by RLS, but nothing wrote to them. Authentication had to land
+first, because every one of those tables is scoped by `auth.uid()`.
 
-**Explicitly out of scope for Phase 5:** AI provider integration, document
-processing, and Storage. Those are Phases 7–8 and remain deferred.
+### What was built
+
+- **`services/quizzes.ts`** — the owner CRUD data layer: `listQuizzes`,
+  `getQuiz`, `saveQuiz`, `deleteQuiz`, `getProfile` and `validateNewQuiz`.
+  Validation mirrors the database CHECK constraints; it exists for error
+  quality, and the database remains the authority.
+- **`screens/History.tsx`** — the History tab, now live instead of a placeholder:
+  loading, empty, error-with-retry and populated states, plus delete
+  confirmation.
+- **`App.tsx`** — the History tab wired to the new screen.
+- **`screens/Generate.tsx`** — the prototype alert now says accurately that
+  persistence works and only _generation_ awaits the AI backend.
+
+### The answer-key split is preserved end to end
+
+`saveQuiz()` writes questions and their correct answers to **two different
+tables**, so a `select *` on `questions` cannot leak an answer by construction.
+`getQuiz()` rejoins them, and only the owner may — RLS denies the key to anyone
+else. A dedicated test asserts the questions insert payload contains no
+`correct_answer` field.
+
+### Deletion is a soft delete
+
+`deleteQuiz()` calls `public.soft_delete_quiz()` (SECURITY DEFINER) rather than
+updating `deleted_at` directly. A plain UPDATE is impossible here: PostgreSQL
+re-checks the updated row against the SELECT policy, which excludes soft-deleted
+rows, so the owner can never produce the row they are trying to produce. The
+function returns `false` for a non-owner, and the History screen reports that
+rather than silently doing nothing.
+
+**Explicitly out of scope for Phase 5 (and still deferred):** AI provider
+integration, document processing, and Storage — Phases 7–8.
+
+That deferral is why **generation** is still not connected. The Generate screen
+collects every setting the schema needs and persistence works, but turning
+source material into questions requires the AI provider. The screen says so
+plainly instead of implying the button is decorative.
 
 ---
 
 ## Verification results (actual, this phase)
 
-| Check               | Command                            | Result                             |
-| ------------------- | ---------------------------------- | ---------------------------------- |
-| App tests           | `npx jest`                         | **150 passed** / 14 suites         |
-| Database tests      | `npm run test:db`                  | **74 passed**, 0 failed, 0 skipped |
-| Typecheck           | `./node_modules/.bin/tsc --noEmit` | clean                              |
-| Lint                | `npx eslint . --ext .ts,.tsx`      | 0 errors, 7 pre-existing warnings  |
-| Prettier            | `npx prettier --check .`           | clean                              |
-| Web bundle          | `npx expo export --platform web`   | **271 modules, 739 KB**            |
-| Live RLS            | MCP `execute_query`                | 9/9 tables RLS-enabled             |
-| Real Google sign-in | —                                  | **NOT VERIFIED — owner action**    |
+| Check               | Command                                  | Result                             |
+| ------------------- | ---------------------------------------- | ---------------------------------- |
+| App tests           | `npx jest`                               | **173 passed** / 16 suites         |
+| Database tests      | `npm run test:db`                        | **96 passed**, 0 failed, 0 skipped |
+| Typecheck           | `./node_modules/.bin/tsc --noEmit`       | clean                              |
+| Lint                | `npx eslint . --ext .ts,.tsx`            | 0 errors, 7 pre-existing warnings  |
+| Prettier            | `npx prettier --check .`                 | clean                              |
+| Web bundle          | `npx expo export --platform web --clear` | **277 modules, 753 KB**            |
+| Live RLS            | MCP `execute_query`                      | 9/9 tables RLS-enabled             |
+| Real Google sign-in | —                                        | **NOT VERIFIED — owner action**    |
 
-The bundle shrank from 287 modules / 1.5 MB to **271 modules / 739 KB** —
-removing Firebase Auth roughly halved it.
+Removing Firebase Auth took the bundle from 287 modules / 1.5 MB to 271 modules
+/ 739 KB. Phase 5 added the persistence layer and History screen, taking it to
+277 modules / 753 KB.
+
+> **Note on the bundle count.** A cached `expo export` reports only the modules
+> it re-processed — one run reported 153 modules while emitting a byte-identical
+> file. Pass `--clear` when the module count matters.
+
+---
 
 ---
 

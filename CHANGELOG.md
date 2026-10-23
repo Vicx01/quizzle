@@ -1387,3 +1387,83 @@ Two specific gaps:
 2. One successful real-browser Google sign-in (sign-in, session persistence
    across refresh, sign-out, account display).
 3. Confirm a failed/cancelled sign-in leaves the app usable.
+
+## 2026-10-23 — Phase 5: profiles + quiz persistence (owner CRUD)
+
+The phase after authentication, per `docs/SUPABASE_MIGRATION.md` §13. The
+`profiles`, `quizzes` and `questions` tables existed and were protected by RLS,
+but nothing wrote to them. Now something does.
+
+### Added
+
+- **`services/quizzes.ts`** — the owner CRUD data layer: `listQuizzes`,
+  `getQuiz`, `saveQuiz`, `deleteQuiz`, `getProfile`, and `validateNewQuiz`.
+  Validation mirrors the database CHECK constraints purely for error quality;
+  the database remains the authority.
+- **`screens/History.tsx`** — the History tab, previously a placeholder.
+  Loading, empty, error-with-retry and populated states, plus a delete
+  confirmation dialog.
+- **`tests/database/crud.test.mjs`** — 22 executed tests against the real
+  engine, wired into `npm run test:db`.
+- **`services/__tests__/quizzes.test.ts`** — 15 unit tests.
+- **`screens/__tests__/History.test.tsx`** — 8 screen tests.
+
+### Changed
+
+- `App.tsx` — the History tab renders the new screen.
+- `screens/Generate.tsx` — the prototype alert now states accurately that
+  persistence works and only _generation_ awaits the AI backend, instead of
+  implying the button is decorative.
+
+### Security
+
+The answer-key split survives the whole path. `saveQuiz()` writes questions and
+correct answers to **two separate tables**, so a `select *` on `questions`
+cannot leak an answer by construction. A test asserts the questions insert
+payload has no `correct_answer` field. Only the owner can rejoin them: RLS
+denies `question_answer_keys` to everyone else, and `getQuiz()` returns
+`correct_answer: null` for a non-owner rather than throwing.
+
+Deletion goes through `soft_delete_quiz()` (SECURITY DEFINER) because a plain
+UPDATE of `deleted_at` is impossible — PostgreSQL re-checks the updated row
+against the SELECT policy, which excludes soft-deleted rows, so the owner can
+never produce the row they are trying to produce.
+
+### A test was found vacuous and fixed
+
+The owner-spoofing assertion originally used a helper that treated "returned no
+rows" as "was denied". That is wrong for writes: RLS filters the `RETURNING`
+clause, so an INSERT can **succeed** and still return nothing. The test now
+asserts a real `42501`.
+
+This was found by mutation testing, which also surfaced why a weaker mutation
+appeared not to fail: two independent layers stop a spoofed-owner insert — the
+INSERT `WITH CHECK`, and the SELECT policy filtering `RETURNING`. Weakening only
+the `WITH CHECK` changes nothing observable. Weakening both makes three tests
+fail, including the corrected one.
+
+### Results
+
+| Check        | Before              | After                      |
+| ------------ | ------------------- | -------------------------- |
+| App (`jest`) | 150 / 14 suites     | **173 passed** / 16 suites |
+| Database     | 74                  | **96 passed**              |
+| Typecheck    | clean               | clean                      |
+| Lint         | 0 errors            | 0 errors, 7 warnings       |
+| Prettier     | clean               | clean                      |
+| Web bundle   | 271 modules, 739 KB | **277 modules, 753 KB**    |
+
+A cached `expo export` reports only the modules it re-processed — one run
+reported 153 modules while emitting a byte-identical file. Use `--clear` when
+the count matters.
+
+### Not verified
+
+- **No request has reached the hosted Supabase project.** The sandbox cannot
+  reach `ppswtryoescehrytxvsh.supabase.co`, so PostgREST request handling is
+  unproven. The CRUD logic is tested against PGlite and against a mocked
+  client; the network path between them is not.
+- **No quiz has been created through the UI**, because generation needs the AI
+  provider (Phase 8, deferred). The persistence layer is exercised by tests, not
+  by a user flow.
+- Real-browser Google sign-in remains outstanding from Phase 4.

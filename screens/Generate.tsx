@@ -136,12 +136,16 @@ export const GenerateScreen = ({
     }
     setError(null);
     setIsGenerating(true);
-    // Backend not implemented — simulate, then reset
+    // Quiz persistence is implemented (Phase 5) — saving, listing and deleting
+    // quizzes against Supabase all work. What is missing is GENERATION: turning
+    // source material into questions needs the AI provider, which is Phase 8
+    // and deliberately deferred. Say so plainly rather than implying the button
+    // is merely decorative.
     setTimeout(() => {
       setIsGenerating(false);
       Alert.alert(
-        'Prototype',
-        'Backend/AI generation is not implemented in this prototype. This screen demonstrates the design tokens and layout only.'
+        'Generation not connected yet',
+        'Saving and managing quizzes works, but turning your material into questions needs the AI backend, which is not built yet. Your settings here are complete and will be used once it is.'
       );
     }, 1200);
   }, [isValid, offline]);

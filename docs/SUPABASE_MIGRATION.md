@@ -510,7 +510,7 @@ the working Firebase state. There is no database to unwind.
 | 2   | Schema + migrations                   | **Done**           | Five migration files; applied and verified on every test run                                               |
 | 3   | RLS policies + **executed** tests     | **Done**           | 74 executed assertions, plus mutation-checked so they fail when a policy is broken                         |
 | 4   | Google-only auth                      | **Code complete**  | Supabase is the SOLE provider; Firebase Auth deleted. **Real-browser sign-in NOT verified — owner action** |
-| 5   | Profiles + quiz persistence           | Not started        | Owner CRUD, replaces the prototype alert                                                                   |
+| 5   | Profiles + quiz persistence           | **Done**           | `services/quizzes.ts` owner CRUD + live History tab; **generation still needs the AI provider**            |
 | 6   | Secure sharing + server-side grading  | Not started        | Edge Functions implementing `docs/SHARE_LINK_API.md`                                                       |
 | 7   | Storage (conditional)                 | Not needed         | Owner decided against persistent storage                                                                   |
 | 8   | Server-side AI + quotas               | Not started        | Edge Function behind `AIProvider`; server-enforced quotas                                                  |

@@ -1,6 +1,6 @@
 # Quizzle — Project Context
 
-**Status:** Database layer migrated to Supabase PostgreSQL (deployed and verified). **Supabase Auth is the sole authentication provider — Firebase Auth has been removed.** Architecture implemented for the frontend; backend/AI not implemented. Awaiting accessibility/visual review before AI-provider integration.
+**Status:** Database layer migrated to Supabase PostgreSQL (deployed and verified). **Supabase Auth is the sole authentication provider — Firebase Auth has been removed.** **Owner quiz persistence is implemented (Phase 5): CRUD against the deployed schema plus a live History tab.** Backend/AI not implemented — quiz _generation_ is still unconnected. Awaiting accessibility/visual review before AI-provider integration.
 **Last updated:** 2026-10-23
 **Branch:** `arena/9131a5e6-quizzle`
 
@@ -145,9 +145,10 @@ Do not finalise the design system or build all screens until the owner approves 
 - Web bundle compiles (271 modules, HTTP 200).
 
 **Deliberately NOT implemented:** server-side API layer and AI provider
-integration. No generation functionality is claimed. The database schema and its
-Row Level Security policies **are** implemented, deployed and covered by 74
-executed tests; no user data has been written to it.
+integration. No generation functionality is claimed. The database schema, its
+Row Level Security policies, and owner quiz persistence **are** implemented and
+covered by **96 executed** database tests plus 173 app tests; no user data has
+been written to the hosted project.
 
 **Owner condition 1 (WCAG AA contrast) has been verified and RESOLVED.** Two
 deviations were found in the approved palette and fixed by splitting the
