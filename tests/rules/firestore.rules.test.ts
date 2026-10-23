@@ -98,6 +98,25 @@ describe('users/{userId}', () => {
     await db(ALICE).doc(`users/${ALICE}`).set(aliceProfile);
     await assertFails(deleteDoc(doc(db(ALICE), 'users', ALICE)));
   });
+
+  it('blocks anonymous create', async () => {
+    await assertFails(db().doc(`users/${ALICE}`).set(aliceProfile));
+  });
+
+  it('blocks create without createdAt', async () => {
+    await assertFails(db(ALICE).doc(`users/${ALICE}`).set({ email: 'alice@example.com' }));
+  });
+
+  it('blocks create with a non-string email', async () => {
+    await assertFails(
+      db(ALICE).doc(`users/${ALICE}`).set({ email: 12345, createdAt: Timestamp.now() })
+    );
+  });
+
+  it('allows a benign self-update that preserves email', async () => {
+    await db(ALICE).doc(`users/${ALICE}`).set(aliceProfile);
+    await assertSucceeds(updateDoc(doc(db(ALICE), 'users', ALICE), { theme: 'dark' }));
+  });
 });
 
 describe('quizzes/{quizId}', () => {
@@ -144,6 +163,48 @@ describe('quizzes/{quizId}', () => {
 
   it('rejects an over-long title', async () => {
     await assertFails(setDoc(doc(db(ALICE), 'quizzes', 'q3'), { ...quiz, title: 'x'.repeat(201) }));
+  });
+
+  it('accepts a title of exactly 200 characters (boundary)', async () => {
+    await assertSucceeds(
+      setDoc(doc(db(ALICE), 'quizzes', 'q4'), { ...quiz, title: 'x'.repeat(200) })
+    );
+  });
+
+  it('blocks anonymous create, update and delete', async () => {
+    await assertFails(setDoc(doc(db(), 'quizzes', 'q5'), { ...quiz, ownerId: 'nobody' }));
+    await db(ALICE).doc('quizzes/q1').set(quiz);
+    await assertFails(updateDoc(doc(db(), 'quizzes', 'q1'), { title: 'Hijacked' }));
+    await assertFails(deleteDoc(doc(db(), 'quizzes', 'q1')));
+  });
+
+  it('blocks create when ownerId is missing', async () => {
+    const withoutOwner = {
+      title: quiz.title,
+      format: quiz.format,
+      difficulty: quiz.difficulty,
+      questionCount: quiz.questionCount,
+      createdAt: quiz.createdAt,
+    };
+    await assertFails(setDoc(doc(db(ALICE), 'quizzes', 'q6'), withoutOwner));
+  });
+
+  it('blocks create when deletedAt is set (no soft-deleted births)', async () => {
+    await assertFails(
+      setDoc(doc(db(ALICE), 'quizzes', 'q7'), { ...quiz, deletedAt: Timestamp.now() })
+    );
+  });
+
+  it('lets the owner soft-delete by setting deletedAt', async () => {
+    await db(ALICE).doc('quizzes/q1').set(quiz);
+    await assertSucceeds(
+      updateDoc(doc(db(ALICE), 'quizzes', 'q1'), { deletedAt: Timestamp.now() })
+    );
+  });
+
+  it('blocks a non-owner from deleting', async () => {
+    await db(ALICE).doc('quizzes/q1').set(quiz);
+    await assertFails(deleteDoc(doc(db(BOB), 'quizzes', 'q1')));
   });
 });
 
@@ -237,6 +298,23 @@ describe('quizAttempts/{attemptId}', () => {
     await db(BOB).doc('quizAttempts/a1').set({ quizId: 'q1', userId: BOB });
     await assertFails(getDoc(doc(db('carol-uid'), 'quizAttempts', 'a1')));
   });
+
+  it('blocks the attempt author from reassigning it to another user', async () => {
+    await db(BOB).doc('quizAttempts/a1').set({ quizId: 'q1', userId: BOB });
+    await assertFails(updateDoc(doc(db(BOB), 'quizAttempts', 'a1'), { userId: ALICE }));
+  });
+
+  it('blocks the quiz owner from editing an attempt they did not author', async () => {
+    await db(BOB).doc('quizAttempts/a1').set({ quizId: 'q1', userId: BOB, score: 3 });
+    // The owner may read it (asserted above) but must not be able to change it.
+    await assertFails(updateDoc(doc(db(ALICE), 'quizAttempts', 'a1'), { score: 10 }));
+  });
+
+  it('blocks anonymous create and read', async () => {
+    await assertFails(setDoc(doc(db(), 'quizAttempts', 'a9'), { quizId: 'q1', userId: BOB }));
+    await db(BOB).doc('quizAttempts/a1').set({ quizId: 'q1', userId: BOB });
+    await assertFails(getDoc(doc(db(), 'quizAttempts', 'a1')));
+  });
 });
 
 describe('shareLinks/{token}', () => {
@@ -245,11 +323,35 @@ describe('shareLinks/{token}', () => {
       ctx.firestore().doc('shareLinks/tok-1').set({ quizId: 'q1' })
     );
     await assertSucceeds(getDoc(doc(db(), 'shareLinks', 'tok-1')));
+    await assertSucceeds(getDoc(doc(db(ALICE), 'shareLinks', 'tok-1')));
   });
 
-  it('blocks all client writes (server-only)', async () => {
+  it('blocks create by any client, authenticated or not', async () => {
     await assertFails(setDoc(doc(db(ALICE), 'shareLinks', 'tok-2'), { quizId: 'q1' }));
     await assertFails(setDoc(doc(db(), 'shareLinks', 'tok-2'), { quizId: 'q1' }));
+  });
+
+  it('blocks update and delete by any client (server-only)', async () => {
+    await testEnv.withSecurityRulesDisabled(ctx =>
+      ctx.firestore().doc('shareLinks/tok-1').set({ quizId: 'q1', accessCount: 0 })
+    );
+    await assertFails(updateDoc(doc(db(ALICE), 'shareLinks', 'tok-1'), { accessCount: 99 }));
+    await assertFails(deleteDoc(doc(db(ALICE), 'shareLinks', 'tok-1')));
+    await assertFails(deleteDoc(doc(db(), 'shareLinks', 'tok-1')));
+  });
+
+  it('stops a client from forging a share link to publish a quiz', async () => {
+    // Even if a client marks its own quiz public, it cannot mint the link,
+    // so the quiz must not become readable to others.
+    await db(ALICE).doc('quizzes/q1').set({
+      ownerId: ALICE,
+      title: 'Trying to self-publish',
+      isPublic: true,
+      shareToken: 'forged-token',
+      deletedAt: null,
+    });
+    await assertFails(getDoc(doc(db(BOB), 'quizzes', 'q1')));
+    await assertFails(getDoc(doc(db(), 'quizzes', 'q1')));
   });
 });
 
@@ -259,7 +361,10 @@ describe('rateLimits/{id}', () => {
       ctx.firestore().doc('rateLimits/rl1').set({ count: 1 })
     );
     await assertFails(getDoc(doc(db(ALICE), 'rateLimits', 'rl1')));
+    await assertFails(getDoc(doc(db(), 'rateLimits', 'rl1')));
     await assertFails(setDoc(doc(db(ALICE), 'rateLimits', 'rl2'), { count: 1 }));
+    await assertFails(updateDoc(doc(db(ALICE), 'rateLimits', 'rl1'), { count: 0 }));
+    await assertFails(deleteDoc(doc(db(ALICE), 'rateLimits', 'rl1')));
   });
 });
 

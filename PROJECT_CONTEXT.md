@@ -150,8 +150,12 @@ deviations are not pinned.
 **Not verified:** visual rendering (no browser in the sandbox), native iOS/Android
 (no build or run), AI provider access (no keys).
 
-Firebase Auth **is** verified. Firestore is not: no rules exist, so nothing is
-written to it.
+Firebase Auth **is** verified. Firestore is not: `firestore.rules` is written and
+statically reviewed (two defects fixed) but has **never been executed** — the
+emulator cannot run in this sandbox and neither Java-free alternative implements
+security rules. 41 rules tests are written and **unrun**. Nothing is written to
+Firestore and no rules are deployed. A known open issue: public sharing would
+expose the answer key, pending an owner decision.
 
 See `NEXT_STEPS.md` for the Phase 4 acceptance criteria and the blocking decisions.
 

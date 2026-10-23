@@ -1,22 +1,33 @@
 // ---------------------------------------------------------------------------
 // Quizzle — Firestore security rules
 //
-// STATUS: WRITTEN FOR REVIEW. NOT DEPLOYED.
-// Do not deploy until these have been reviewed and verified.
-// Nothing currently writes to Firestore, so deploying is not yet required.
+// STATUS: REVISED AFTER STATIC REVIEW. NOT DEPLOYED. NOT EXECUTED.
+//
+// See "KNOWN ISSUE — public sharing exposes answers" below before deploying.
 //
 // Model (ARCHITECTURE.md §3.9): users, quizzes, quizAttempts, shareLinks,
 // rateLimits.
 //
-// Principles applied here:
-//  - Deny by default. The catch-all at the bottom denies everything that is
-//    not explicitly allowed, including any collection added later.
-//  - Ownership is derived from request.auth.uid, never from a client-supplied
-//    field. A client passing ownerId: <someone else> cannot gain access.
+// Principles:
+//  - Deny by default. The catch-all denies anything not explicitly allowed,
+//    including collections added later.
+//  - Ownership derives from request.auth.uid, never from a client-supplied
+//    field.
 //  - Server-only collections (shareLinks writes, rateLimits) deny all client
-//    access. The server uses the Admin SDK, which bypasses these rules.
-//  - Email is not client-mutable, so a user cannot seize another identity's
-//    email on their own profile document.
+//    access; the Admin SDK bypasses these rules.
+//
+// REVIEW HISTORY
+//  v1 — initial draft.
+//  v2 — fixed two defects found by static review (see CHANGELOG 2026-10-23):
+//       1. Cross-document lookups built a malformed path. A generic
+//          doc(path) helper interpolated paths that already began with "/",
+//          producing "/databases/x/documents//quizzes/id". Helpers are now
+//          written per collection with explicit, correct path literals.
+//       2. quizzes read/update/delete used a cross-document lookup to test
+//          ownership even though resource.data.ownerId is already on the
+//          document. That costs 2 document accesses per document evaluated,
+//          which exhausts the per-request access limit and breaks list
+//          queries. Those rules now read resource.data directly.
 // ---------------------------------------------------------------------------
 
 rules_version = '2';
@@ -34,30 +45,53 @@ service cloud.firestore {
       return request.auth.uid;
     }
 
-    function doc(path) {
-      return get(/databases/$(database)/documents/$(path)).data;
+    // Cross-document helpers are written per collection with explicit path
+    // literals. Do NOT reintroduce a generic doc(collectionPath) helper:
+    // interpolating a string that already starts with "/" yields a double
+    // slash, which produces a malformed path.
+    //
+    // Each get()/exists() below costs one document access against the
+    // per-request limit, so these are used only where the data is genuinely
+    // on another document.
+
+    function quizExists(quizId) {
+      return exists(/databases/$(database)/documents/quizzes/$(quizId));
     }
 
-    function existsDoc(path) {
-      return exists(/databases/$(database)/documents/$(path));
+    function quizOwnerId(quizId) {
+      return get(/databases/$(database)/documents/quizzes/$(quizId)).data.get('ownerId', null);
     }
 
-    // True when the signed-in user owns the referenced quiz.
     function isQuizOwner(quizId) {
-      return isSignedIn()
-        && existsDoc(/quizzes/$(quizId))
-        && doc(/quizzes/$(quizId)).get('ownerId', null) == uid();
+      return isSignedIn() && quizExists(quizId) && quizOwnerId(quizId) == uid();
     }
 
-    // A shared quiz is readable by anyone holding the link, provided the
-    // share link row exists, has not been revoked, and has not expired.
-    // The quiz stores its own shareToken, so the rule can look the link up
-    // without the client passing the token in a way rules could not read.
+    function shareLinkExists(token) {
+      return exists(/databases/$(database)/documents/shareLinks/$(token));
+    }
+
+    function shareLinkRevokedAt(token) {
+      return get(/databases/$(database)/documents/shareLinks/$(token)).data.get('revokedAt', null);
+    }
+
+    function shareLinkExpiresAt(token) {
+      return get(/databases/$(database)/documents/shareLinks/$(token)).data.get('expiresAt', null);
+    }
+
+    // A shared quiz is readable by anyone holding the link, provided the share
+    // link row exists, has not been revoked, and has not expired. The quiz
+    // stores its own shareToken, so the rule can look the link up — rules
+    // cannot read a token supplied by the client.
+    //
+    // Note: this reads shareLinks/{token}, which is already world-readable
+    // ("allow read: if true"), so the lookup discloses nothing the caller
+    // could not already read. See KNOWN ISSUE below for the real exposure
+    // concern with public quiz reads.
     function shareLinkIsActive(token) {
-      return existsDoc(/shareLinks/$(token))
-        && doc(/shareLinks/$(token)).get('revokedAt', null) == null
-        && doc(/shareLinks/$(token)).get('expiresAt', null) != null
-        && doc(/shareLinks/$(token)).expiresAt > request.time;
+      return shareLinkExists(token)
+        && shareLinkRevokedAt(token) == null
+        && shareLinkExpiresAt(token) != null
+        && shareLinkExpiresAt(token) > request.time;
     }
 
     function isSharedQuiz() {
@@ -79,20 +113,48 @@ service cloud.firestore {
         && request.resource.data.get('createdAt', null) != null;
 
       // Email is immutable: it identifies the account and must not be
-      // swapped to someone else's address.
+      // swapped for another identity's address.
       allow update: if isSignedIn()
         && uid() == userId
         && request.resource.data.email == resource.data.email;
 
-      // Account deletion is a server-side operation (it must also remove
-      // quizzes, attempts and share links), so clients cannot delete.
+      // Account deletion must fan out to quizzes, attempts and share links,
+      // so it is a server-side operation.
       allow delete: if false;
     }
 
     // ------------------------------------------------------------- quizzes
+    //
+    // KNOWN ISSUE — READ BEFORE DEPLOYING
+    // ----------------------------------
+    // isSharedQuiz() permits an UNAUTHENTICATED read of the whole quiz
+    // document. Per ARCHITECTURE.md §3.9 that document embeds
+    // questions[].correctAnswer and questions[].explanation.
+    //
+    // Anyone with a live share link can therefore read the answer key before
+    // attempting the quiz, which defeats the point of a quiz. The get()
+    // lookup itself is not the leak (shareLinks is already world-readable);
+    // the leak is that the answer key lives in the same document as the
+    // publicly readable questions.
+    //
+    // Two ways to resolve — OWNER DECISION REQUIRED:
+    //   (a) Move answers to a subcollection quizzes/{id}/answers (owner-only
+    //       read) and keep only questions public.
+    //   (b) Remove isSharedQuiz() from this rule and serve shared quizzes
+    //       through the server API, which returns a sanitised quiz.
+    // Option (b) is the safer default and matches the deny-by-default
+    // principle above.
+    //
+    // Mitigating factor today: a quiz only becomes publicly readable once the
+    // SERVER creates a matching shareLinks document, and clients cannot write
+    // shareLinks at all. So a client cannot make its own quiz public.
 
     match /quizzes/{quizId} {
-      allow read: if isQuizOwner(quizId) || isSharedQuiz();
+      // resource.data.ownerId is on the document, so no cross-document lookup
+      // is needed here. That keeps list queries within the per-request
+      // document-access limit.
+      allow read: if isSignedIn() && resource.data.get('ownerId', null) == uid()
+        || isSharedQuiz();
 
       // Ownership is stamped from the auth UID, not taken from the client.
       allow create: if isSignedIn()
@@ -102,16 +164,18 @@ service cloud.firestore {
         && request.resource.data.get('deletedAt', null) == null;
 
       // ownerId is immutable, so ownership cannot be transferred by a write.
-      allow update: if isQuizOwner(quizId)
+      allow update: if isSignedIn()
+        && resource.data.get('ownerId', null) == uid()
         && request.resource.data.ownerId == resource.data.ownerId;
 
-      allow delete: if isQuizOwner(quizId);
+      allow delete: if isSignedIn() && resource.data.get('ownerId', null) == uid();
     }
 
     // -------------------------------------------------------- quizAttempts
 
     match /quizAttempts/{attemptId} {
-      // Readable by the person who attempted it, or by the quiz owner.
+      // Readable by the person who attempted it, or by the quiz owner. The
+      // quiz-owner branch needs a cross-document lookup, unlike quizzes above.
       allow read: if isSignedIn()
         && (resource.data.get('userId', null) == uid()
             || isQuizOwner(resource.data.get('quizId', '')));
@@ -119,7 +183,7 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.get('userId', null) == uid()
         && request.resource.data.get('quizId', '') is string
-        && existsDoc(/quizzes/$(request.resource.data.quizId));
+        && quizExists(request.resource.data.quizId);
 
       // Only the author of the attempt may modify or remove it.
       allow update, delete: if isSignedIn()

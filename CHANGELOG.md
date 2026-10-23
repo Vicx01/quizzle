@@ -870,3 +870,106 @@ clean · **149 tests / 14 suites** (unchanged — rules tests excluded by design
 firestore:rules`).
 - Firestore is still unused by the app — no data layer, nothing stored.
 - AI-provider integration not started.
+
+---
+
+## 2026-10-23 — Firestore rules: static review + two defects fixed. STILL NOT EXECUTED.
+
+**Bottom line: the rules have still never been executed.** Everything below is
+static review plus type-checking. The 41 tests are written but **0 have run**.
+They are not counted as passing.
+
+### Why the emulator cannot run here (verified, not assumed)
+
+Each avenue was actually attempted:
+
+| Step                    | Result                                                                                                                                                                            |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Java runtime            | **Obtained.** No system Java, but `jdk4py` ships a JDK in a PyPI wheel. OpenJDK 25.0.2 (Temurin) runs.                                                                            |
+| Firebase CLI            | **Installed** from npm (`firebase-tools`).                                                                                                                                        |
+| Emulator JAR            | **FAILED.** `firebase setup:emulators:firestore` → "Failed to make request to https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.22.0.jar" |
+| Both official JAR hosts | `storage.googleapis.com` and `dl.google.com` both return `000` (blocked). npm, PyPI and GitHub return 200.                                                                        |
+
+Two Java-free Firestore emulators were evaluated as substitutes and **both
+rejected**:
+
+- `@firestore-emulator/server` — a Node.js reimplementation. Zero mentions of
+  security rules in its README; the only repo code matches for "rules" are lint
+  config files. It does not evaluate rules, so tests against it would be
+  meaningless.
+- `hidane` — explicitly documents Security Rules as "does not yet" work.
+
+Neither can validate rules, so neither was used. Rule evaluation is exactly the
+behaviour under test, and an unofficial CEL evaluator could pass locally while
+behaving differently in production.
+
+### Defects found by static review — FIXED (v2)
+
+1. **Malformed cross-document paths.** A generic `doc(path)` helper
+   interpolated paths that already began with `/`, producing
+   `/databases/x/documents//quizzes/id`. This affected every cross-document
+   lookup: `isQuizOwner`, `shareLinkIsActive`, and the `quizAttempts` create
+   check. Replaced with per-collection helpers using explicit path literals,
+   with a comment warning against reintroducing the generic form.
+2. **Query-scaling defect in `quizzes`.** read/update/delete used a
+   cross-document lookup to test ownership even though `ownerId` is already on
+   the document. That is 2 document accesses per document evaluated, which
+   exhausts the per-request access limit and breaks list queries. These rules
+   now read `resource.data.ownerId` directly (0 accesses). The cross-document
+   lookup is retained only in `quizAttempts`, where the owner genuinely lives on
+   another document.
+
+### KNOWN ISSUE — public sharing exposes the answer key (OWNER DECISION)
+
+`isSharedQuiz()` allows an **unauthenticated** read of the entire quiz document.
+Per ARCHITECTURE.md §3.9 that document embeds `questions[].correctAnswer` and
+`questions[].explanation`. Anyone with a live share link can read the answer key
+before attempting the quiz, which defeats the point of a quiz.
+
+To be precise about the risk: the `get()` lookup is **not** the leak —
+`shareLinks` is already world-readable, so the lookup discloses nothing new. The
+leak is that the answer key shares a document with publicly readable questions.
+
+Two fixes, both documented in `firestore.rules`. Option (b) is the safer default
+and matches deny-by-default:
+
+- (a) move answers to a `quizzes/{id}/answers` subcollection, owner-only read;
+- (b) remove `isSharedQuiz()` and serve shared quizzes through the server API,
+  which returns a sanitised quiz.
+
+Mitigating factor today: a quiz only becomes public once the **server** creates
+a matching `shareLinks` document, and clients cannot write `shareLinks` at all —
+so a client cannot make its own quiz public. There is a test for this.
+
+### Tests: 41 written, 0 executed
+
+Grew from 24 to 41. New negative coverage: anonymous create/update/delete on
+quizzes, missing `ownerId`, `deletedAt` set at birth, non-string email, missing
+`createdAt`, 200-char title boundary, attempt reassignment, owner editing an
+attempt they did not author, anonymous attempts, `shareLinks` update/delete,
+`rateLimits` update/delete, and a client forging a share link to self-publish.
+
+The file **type-checks cleanly** (`tsc --ignoreConfig`, 0 errors). That validates
+the TypeScript only — it says nothing about Firestore rules DSL syntax, which
+remains unverified.
+
+### To run (Windows PowerShell)
+
+```powershell
+java -version                                    # need 17+
+winget install EclipseAdoptium.Temurin.21.JDK    # if missing, then restart shell
+npm install -g firebase-tools
+firebase login
+firebase emulators:start --only firestore --project quizzle-rules-test   # terminal 1
+npm run test:rules                                                        # terminal 2
+```
+
+`firebase.json` pins the emulator to port 8089 so it does not collide with the
+Expo dev server on 8080.
+
+### Checks
+
+tsc clean · eslint 0 errors / 7 warnings (all pre-existing) · prettier clean ·
+**app suite 149 tests / 14 suites** (unchanged; rules tests stay excluded).
+
+Nothing was deployed, no billing enabled, no data written.

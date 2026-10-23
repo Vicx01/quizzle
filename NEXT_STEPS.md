@@ -54,18 +54,52 @@ Ownership always derives from `request.auth.uid`; a client-supplied `ownerId`
 cannot grant access, and `ownerId` is immutable so a quiz cannot be transferred
 by a write.
 
-**Not verified.** The emulator cannot run in this sandbox (no Java, no
-firebase-tools, and no network access to download the emulator), so the rules
-are **syntactically unchecked** and `tests/rules/firestore.rules.test.ts` has
-**never been executed**. To verify locally:
+**NOT VERIFIED — the rules have never been executed.** Static review found and
+fixed two defects (see CHANGELOG 2026-10-23), but nothing has been run.
 
-```bash
+The emulator genuinely cannot run in this sandbox. This was verified, not
+assumed: a JDK was obtained via the `jdk4py` PyPI wheel and `firebase-tools` was
+installed from npm, but the emulator JAR download fails — both official hosts
+(`storage.googleapis.com`, `dl.google.com`) are network-blocked. The two
+Java-free emulators were evaluated and rejected because neither implements
+security rules, which is precisely what is under test.
+
+To verify locally — **Windows PowerShell**, checking what is already installed
+first:
+
+```powershell
+# 1. Java (the Firestore emulator needs it). Already present?
+java -version
+# If that errors, install Temurin 21 LTS, then OPEN A NEW SHELL:
+winget install EclipseAdoptium.Temurin.21.JDK
+# (Fallback if winget is unavailable: https://adoptium.net/temurin/releases/)
+
+# 2. Firebase CLI. Already present?
+firebase --version
+# If that errors:
+npm install -g firebase-tools
+
+# 3. Sign in once (opens a browser):
+firebase login
+
+# 4. Terminal 1 — start the emulator and leave it running:
 firebase emulators:start --only firestore --project quizzle-rules-test
+
+# 5. Terminal 2 — run the rules tests:
 npm run test:rules
 ```
 
-Those tests are excluded from `npm test` (`testPathIgnorePatterns`) so a missing
-emulator cannot fail the app suite. Only deploy after review:
+On macOS/Linux the same sequence works with `cp`-style shells; install Java via
+your package manager (e.g. `brew install temurin@21`).
+
+**41 tests are written; 0 have been executed.** They are excluded from `npm test`
+(`testPathIgnorePatterns`) so a missing emulator cannot fail the app suite, and
+they must not be counted as passing until they actually run.
+
+**Before deploying, resolve the answer-key exposure** documented at the top of
+the `quizzes` block in `firestore.rules`: public sharing currently exposes
+`questions[].correctAnswer` to unauthenticated readers. That needs an owner
+decision. Only deploy after review:
 
 ```bash
 firebase deploy --only firestore:rules
