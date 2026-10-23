@@ -24,13 +24,29 @@ Confirmed:
 
 ### Gaps found while reviewing the now-working flow
 
-1. **`signOut()` is exported but never called anywhere.** A user can sign in but
-   has no way to sign out. The Account tab is still a placeholder.
+1. ~~**`signOut()` is exported but never called**~~ — **DONE (2026-10-23)**: the
+   Account screen shows the signed-in identity and offers Sign out, wired to
+   Firebase Auth. Covered by 21 new tests.
 2. **Firestore is initialised (`getFirebaseFirestore()`) but never used.** There
-   is no data layer.
-3. **No Firestore security rules exist.** There is no data-access control. This
-   must be written **before** any user data is stored.
+   is no data layer. **Nothing is written to Firestore** — deliberate until
+   security rules exist.
+3. **No Firestore security rules exist.** There is no data-access control. These
+   must be written **and reviewed/verified** before any user data is stored.
+   Kept as a separate, reviewable step at the owner's request.
 4. **Native (iOS/Android) auth has never been built.**
+
+### Environment file convention (2026-10-23)
+
+There is **no committed template**. `.env.example` was removed at the owner's
+request, so `.env` is created by hand in the project root and is the single
+environment file.
+
+- `.env` and every `.env.*` variant are gitignored with **no exceptions** (the
+  old `!.env.example` negation is gone).
+- `EXPO_PUBLIC_FIREBASE_*` names and the config/placeholder-detection logic in
+  `services/firebase.ts` are unchanged.
+- Verify with `git check-ignore -v .env` (prints a rule) and
+  `git ls-files | grep -i '^\.env'` (prints nothing).
 
 ### Verification details still to record
 
@@ -215,7 +231,7 @@ npm run web            # expo start --web
 Not yet runnable / not yet run:
 
 - ~~Firebase Auth live test~~ **DONE — owner confirmed a successful sign-in.**
-- Firestore rules deployment (`firebase deploy --only firestore:rules`) — **blocked: no rules file exists yet**
+- Firestore rules — **next step, separate reviewable change**: write rules + tests, review, **then** deploy. No user data is stored until then.
 - AI provider live calls (needs keys)
 - `eas build` for native (needs EAS account)
 - Visual/browser verification (needs a browser)

@@ -715,3 +715,83 @@ The owner confirmed success but these specifics were not captured:
 - did the session survive a page reload?
 - which origin was used — `localhost` or the `8080-….e2b.app` preview host?
 - does the user appear in Firebase Console → Authentication → Users?
+
+---
+
+## 2026-10-23 — Account screen + working sign-out, and `.env.example` removed
+
+Two changes, committed separately.
+
+### 1. Environment file: `.env` is now the single manual file
+
+Owner no longer wants a committed template.
+
+- **Removed `.env.example`** from the repository (`git rm`).
+- **`.gitignore`** — dropped the `!.env.example` negation, so every `.env`
+  variant is ignored with no exceptions.
+- Verified: `.env` is ignored (`git check-ignore -v .env` → rule at
+  `.gitignore:43`), untracked (`git ls-files | grep -i '^\.env'` → empty), and
+  **no credentials were staged or committed** (staged diff scanned for the API
+  key, project id, sender id and app id). The local `.env` file was not deleted.
+- `EXPO_PUBLIC_FIREBASE_*` names and the config/placeholder-detection logic are
+  unchanged.
+- Docs updated to drop `.env.example` and explain creating `.env` by hand, with
+  per-shell commands (`touch` / `type nul >` / `New-Item`).
+- `screens/SignIn.tsx` no longer tells the user to copy a file that no longer
+  exists.
+- Also corrected a stale line in `docs/FIREBASE_SETUP.md` §5 that still said
+  sign-in must be described as unverified.
+- CHANGELOG history left intact — those entries record what actually happened.
+
+### 2. Account screen and working sign-out
+
+`screens/Account.tsx` (new):
+
+- Shows display name, email and profile photo.
+- Falls back to an **initials avatar** when there is no photo
+  (`getInitials()`), and to **"Signed in"** when there is no display name —
+  Google accounts do not always expose either.
+- **Sign out** button (secondary, full-width, disabled while in flight).
+
+`App.tsx`:
+
+- Tracks `currentUser`, `signingOut`, `signOutError`.
+- `handleSignOut()` calls the existing `signOut()` from `services/auth`.
+- **Does not flip auth state itself** — Firebase's `onAuthStateChanged` is the
+  single source of truth. Setting it locally would race the listener and could
+  show the sign-in screen before the session is torn down.
+- On failure the user **stays signed in** and the error is shown. Silently
+  swallowing it would strand them in an account they cannot leave; optimistically
+  flipping to sign-in would claim a state that did not happen.
+- Resets to the Generate tab, so a later sign-in does not resume on Account.
+
+Protected screens: `authState === 'signed-out'` renders `SignInScreen`
+regardless of `activeTab`, so Generate/History/Share/Account are unreachable
+after sign-out.
+
+### Tests — 21 new (128 → 149)
+
+`screens/__tests__/Account.test.tsx` (15): name/email rendering, photo vs
+initials fallback, missing display name, missing email, sign-out press, disabled
+while in flight, error shown/not shown, null-user loading state, and 4
+`getInitials` cases.
+
+`tests/App.test.tsx` (6, new file): sign-in screen with no user, Generate screen
+when signed in, identity on Account, **return to sign-in after sign-out with
+protected screens gone**, stays signed in and surfaces the error when sign-out
+fails, and tab reset on re-sign-in.
+
+`services/auth` and `services/firebase` are mocked, so the shell test drives
+`onAuthStateChanged` directly without contacting Firebase.
+
+### Checks
+
+typecheck clean · eslint **0 errors / 7 warnings** (all 7 pre-existing, in
+`Generate.tsx`, `Generate.test.tsx`, `ThemeContext.test.tsx` — none in the new
+files) · prettier clean · **149 tests / 14 suites** (was 128 / 12).
+
+### Not started
+
+Firestore security rules — held as a **separate, reviewable step** per the
+owner's instruction. No user data is stored and no rules are deployed.
+AI-provider integration still not started.

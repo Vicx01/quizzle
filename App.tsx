@@ -11,9 +11,11 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { StatusBar, StyleSheet, Text, View } from 'react-native';
+import type { User } from 'firebase/auth';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { GenerateScreen } from './screens/Generate';
 import { SignInScreen } from './screens/SignIn';
+import { AccountScreen } from './screens/Account';
 import {
   onAuthStateChanged,
   signInWithGoogle,
@@ -23,6 +25,7 @@ import {
   isCancellation,
   getCurrentOrigin,
   isEmbeddedInFrame,
+  signOut,
 } from './services/auth';
 import { getFirebaseConfigStatus, type ConfigStatus } from './services/firebase';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
@@ -52,6 +55,9 @@ export default function App() {
   );
   const [authError, setAuthError] = useState<string | null>(null);
   const [signingIn, setSigningIn] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('generate');
   const { isConnected } = useNetworkStatus();
 
@@ -78,8 +84,12 @@ export default function App() {
     void consumeRedirectResult();
 
     const unsubscribe = onAuthStateChanged(user => {
+      setCurrentUser(user);
       setAuthState(user ? 'signed-in' : 'signed-out');
       setAuthError(null);
+      // A completed sign-out (or a session ending elsewhere) must not leave a
+      // stale error from an earlier attempt on screen.
+      if (!user) setSignOutError(null);
     });
     return unsubscribe;
   }, []);
@@ -98,6 +108,7 @@ export default function App() {
       if (user) {
         // onAuthStateChanged will also flip this; setting it here avoids a
         // flash of the sign-in screen.
+        setCurrentUser(user);
         setAuthState('signed-in');
       }
       // If null, a redirect was started and the page will reload.
@@ -108,6 +119,28 @@ export default function App() {
       }
     } finally {
       setSigningIn(false);
+    }
+  }, []);
+
+  const handleSignOut = useCallback(async () => {
+    setSigningOut(true);
+    setSignOutError(null);
+    try {
+      await signOut();
+      // Do not flip authState here. Firebase's onAuthStateChanged is the single
+      // source of truth: it fires with null and moves the shell to the sign-in
+      // screen. Setting state here too would race the listener and could show
+      // the sign-in screen before the session is actually torn down.
+      setCurrentUser(null);
+      // Reset to the default tab so a later sign-in does not resume on the
+      // Account screen, which would be misleading after signing out.
+      setActiveTab('generate');
+    } catch (error: unknown) {
+      // Stay signed in and surface the failure — the user needs to know the
+      // sign-out did not happen, and needs to be able to try again.
+      setSignOutError(describeAuthErrorWithCode(error));
+    } finally {
+      setSigningOut(false);
     }
   }, []);
 
@@ -128,6 +161,13 @@ export default function App() {
             configStatus={configStatus}
             origin={signInEnv.origin}
             embedded={signInEnv.embedded}
+          />
+        ) : activeTab === 'account' ? (
+          <AccountScreen
+            user={currentUser}
+            onSignOut={handleSignOut}
+            signingOut={signingOut}
+            error={signOutError}
           />
         ) : activeTab === 'generate' ? (
           <GenerateScreen

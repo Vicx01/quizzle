@@ -121,12 +121,17 @@ Do not finalise the design system or build all screens until the owner approves 
 - Project structure, TypeScript strict mode, ESLint, Prettier and Jest are configured.
 - Design tokens and reusable components are implemented (light + dark).
 - Sign-in screen and app shell with tab navigation are implemented.
+- **Google sign-in is implemented and VERIFIED** — the owner completed a live
+  sign-in against the real Firebase project.
+- **Account screen** shows the signed-in identity (name, email, profile photo)
+  and is the only place Sign out is offered; sign-out is wired to Firebase Auth.
 - Loading / empty / error / offline states are implemented.
-- Checks: typecheck clean, lint 0 errors, format clean, **74 tests passing**.
+- Checks: typecheck clean, lint 0 errors, format clean, **149 tests passing**.
 - Web bundle compiles (271 modules, HTTP 200).
 
-**Deliberately NOT implemented:** Firestore, server-side API layer, AI provider
-integration, and live Google sign-in. No backend functionality is claimed.
+**Deliberately NOT implemented:** Firestore (initialised but unused), Firestore
+security rules, server-side API layer, and AI provider integration. No backend
+functionality is claimed, and **no user data is stored**.
 
 **Owner condition 1 (WCAG AA contrast) has been verified and RESOLVED.** Two
 deviations were found in the approved palette and fixed by splitting the
@@ -143,8 +148,10 @@ in `theme/__tests__/contrast.test.ts` now pass as real requirements — the
 deviations are not pinned.
 
 **Not verified:** visual rendering (no browser in the sandbox), native iOS/Android
-(no build or run), Firebase Auth (no project configured), AI provider access
-(no keys).
+(no build or run), AI provider access (no keys).
+
+Firebase Auth **is** verified. Firestore is not: no rules exist, so nothing is
+written to it.
 
 See `NEXT_STEPS.md` for the Phase 4 acceptance criteria and the blocking decisions.
 
@@ -152,7 +159,8 @@ See `NEXT_STEPS.md` for the Phase 4 acceptance criteria and the blocking decisio
 
 - ~~**WCAG AA contrast deviations**~~ — RESOLVED (2026-10-22); see DESIGN_BRIEF.md §16.
 - **Visual review of the new border colours** — the darker control borders (`#8F8F8F` / `#666666`) and the now-visible toggle track have not been seen in a browser. Owner review in both themes is the main remaining gap.
-- **Firebase project** — needed before Google sign-in can be verified.
+- ~~**Firebase project**~~ — RESOLVED (2026-10-23): Google sign-in is verified end to
+  end. Firestore security rules are the outstanding Firebase work.
 - **Navigation** — the custom tab shell is kept. `expo-router` stays installed but unused; do not migrate without a concrete requirement.
 - Final owner approval of `ARCHITECTURE.md` (stack, data model, security, provider order, deployment).
 - AI provider selection after live free-tier verification (NVIDIA NIM / GroqCloud / Mistral).
