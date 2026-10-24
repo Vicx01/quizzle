@@ -49,6 +49,7 @@ describe('migrations and RLS coverage', () => {
       '20261023112557_retention.sql',
       '20261023112608_share_resolution.sql',
       '20261023112616_soft_delete.sql',
+      '20261024075942_share_creation.sql',
     ]);
   });
 

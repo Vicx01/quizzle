@@ -183,3 +183,140 @@ describe('the resolve → record cycle the endpoints use', () => {
     );
   });
 });
+
+describe('share-link creation (public.create_share_link)', () => {
+  const future = () => new Date(Date.now() + 7 * 86_400_000).toISOString();
+
+  it('mints a link for a quiz the caller owns', async () => {
+    const id = await t.asService('select public.create_share_link($1,$2,$3,$4,$5) as id', [
+      seed.aliceQuiz,
+      'mint-token-abc-0123456789',
+      future(),
+      null,
+      USERS.alice,
+    ]);
+    const linkId = id.rows[0].id;
+    assert.ok(linkId, 'expected a link id');
+
+    // The minted token resolves, which proves the hash was computed correctly.
+    const resolved = await t.asService('select * from public.resolve_share_link($1)', [
+      'mint-token-abc-0123456789',
+    ]);
+    assert.equal(resolved.rows.length, 1);
+    assert.equal(resolved.rows[0].quiz_id, seed.aliceQuiz);
+  });
+
+  it('stores only the digest, never the raw token', async () => {
+    const token = 'mint-token-xyz-0123456789';
+    await t.asService('select public.create_share_link($1,$2,$3,$4,$5)', [
+      seed.aliceQuiz,
+      token,
+      future(),
+      null,
+      USERS.alice,
+    ]);
+
+    const rows = await t.asRoot(
+      `select count(*)::int as n from public.share_links
+       where token_hash = sha256(convert_to($1, 'UTF8'))`,
+      [token]
+    );
+    assert.equal(rows.rows[0].n, 1);
+
+    // No column holds the plaintext token.
+    const leak = await t.asRoot(
+      `select count(*)::int as n from public.share_links where token_hash::text = $1`,
+      [token]
+    );
+    assert.equal(leak.rows[0].n, 0);
+  });
+
+  it('refuses to mint a link for a quiz the caller does not own', async () => {
+    // The authoritative ownership check. Under service_role there is no RLS to
+    // fall back on, so this function is the only thing preventing it.
+    await assert.rejects(
+      () =>
+        t.asService('select public.create_share_link($1,$2,$3,$4,$5)', [
+          seed.bobQuiz, // Bob's quiz
+          'mint-token-bad-0123456789',
+          future(),
+          null,
+          USERS.alice, // Alice, who does not own it
+        ]),
+      error => error.code === '23001', // restrict_violation
+      'a non-owner must not be able to mint a link'
+    );
+  });
+
+  it('refuses to mint for a soft-deleted quiz', async () => {
+    const quizId = (
+      await t.asRoot(
+        `insert into public.quizzes (owner_id, title, format, difficulty, question_count, source_type)
+         values ($1, 'Doomed', 'MCQ', 'Easy', 1, 'text') returning id`,
+        [USERS.alice]
+      )
+    ).rows[0].id;
+    await t.asRoot('update public.quizzes set deleted_at = now() where id = $1', [quizId]);
+
+    await assert.rejects(() =>
+      t.asService('select public.create_share_link($1,$2,$3,$4,$5)', [
+        quizId,
+        'mint-token-deleted-0123456789',
+        future(),
+        null,
+        USERS.alice,
+      ])
+    );
+  });
+
+  it('rejects a token that is too short', async () => {
+    await assert.rejects(() =>
+      t.asService('select public.create_share_link($1,$2,$3,$4,$5)', [
+        seed.aliceQuiz,
+        'tooshort',
+        future(),
+        null,
+        USERS.alice,
+      ])
+    );
+  });
+
+  it('is not callable by an authenticated user or by anon', async () => {
+    await assert.rejects(
+      () =>
+        t.asUser(USERS.alice, 'select public.create_share_link($1,$2,$3,$4,$5)', [
+          seed.aliceQuiz,
+          'x'.repeat(24),
+          future(),
+          null,
+          USERS.alice,
+        ]),
+      error => error.code === '42501',
+      'authenticated must not be able to mint links'
+    );
+    await assert.rejects(
+      () =>
+        t.asAnon('select public.create_share_link($1,$2,$3,$4,$5)', [
+          seed.aliceQuiz,
+          'x'.repeat(24),
+          future(),
+          null,
+          USERS.alice,
+        ]),
+      error => error.code === '42501'
+    );
+  });
+
+  it('rejects an expiry beyond the 30-day window', async () => {
+    // Enforced by the table CHECK constraint, not by the function.
+    await assert.rejects(() =>
+      t.asService('select public.create_share_link($1,$2,$3,$4,$5)', [
+        seed.aliceQuiz,
+        'mint-token-long-0123456789',
+        new Date(Date.now() + 90 * 86_400_000).toISOString(),
+        null,
+        USERS.alice,
+      ])
+    );
+  });
+});
