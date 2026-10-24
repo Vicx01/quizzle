@@ -49,3 +49,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# generated Edge Function deploy bundles (scripts/bundle-functions.mjs)
+.deploy-bundle/

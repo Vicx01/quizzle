@@ -16,7 +16,8 @@
     "test:rules": "jest --config jest.rules.config.js --runInBand",
     "test:db": "node --test tests/database/rls.test.mjs tests/database/schema.test.mjs tests/database/crud.test.mjs tests/database/share.test.mjs",
     "typecheck": "tsc --noEmit",
-    "build:web": "expo export --platform web"
+    "build:web": "expo export --platform web",
+    "functions:bundle": "node scripts/bundle-functions.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
