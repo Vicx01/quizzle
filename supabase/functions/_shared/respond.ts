@@ -76,6 +76,16 @@ export function notFound(origin: string | null): Response {
   return respond({ error: 'Share link is not available.' }, 404, origin);
 }
 
+/**
+ * No valid session, where a session is required.
+ *
+ * 401 rather than 404: the caller is asking to manage their OWN links, so
+ * there is no hidden resource to protect by pretending the route is absent.
+ */
+export function unauthorized(origin: string | null): Response {
+  return respond({ error: 'Sign in to manage share links.' }, 401, origin);
+}
+
 export function badRequest(reason: string, origin: string | null): Response {
   return respond({ error: reason }, 400, origin);
 }

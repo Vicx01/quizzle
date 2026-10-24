@@ -79,9 +79,10 @@ export function checkRateLimit(
   return { allowed: true, retryAfter, remaining: Math.max(0, limit - count) };
 }
 
-/** Defaults: reading a quiz is cheap, submitting is not. */
+/** Defaults: reading a quiz is cheap, submitting and minting are not. */
 export const RESOLVE_LIMIT = 60;
 export const ATTEMPT_LIMIT = 20;
+export const MANAGE_LIMIT = 30;
 export const WINDOW_MS = 60_000;
 
 /**
