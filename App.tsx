@@ -17,6 +17,8 @@ import { GenerateScreen } from './screens/Generate';
 import { SignInScreen } from './screens/SignIn';
 import { AccountScreen } from './screens/Account';
 import { HistoryScreen } from './screens/History';
+import { TakeQuizScreen } from './screens/TakeQuiz';
+import { shareTokenFromLocation } from './services/sharing';
 import {
   onAuthStateChanged,
   signInWithGoogle,
@@ -62,6 +64,10 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('generate');
   const { isConnected } = useNetworkStatus();
+
+  // A share link opens the app for ANYONE, signed in or not. Read once: the
+  // token cannot change without a fresh page load.
+  const [shareToken, setShareTokenState] = useState<string | null>(() => shareTokenFromLocation());
 
   // Read once: env vars are inlined at build time, so this cannot change at
   // runtime, but recomputing keeps the value stable across re-renders.
@@ -151,7 +157,23 @@ export default function App() {
       <View style={styles.root}>
         <StatusBar barStyle="auto" />
 
-        {authState === 'loading' ? (
+        {shareToken ? (
+          // Deliberately ahead of the auth gate: requiring a sign-in to open a
+          // shared quiz would defeat the point of sharing.
+          <TakeQuizScreen
+            token={shareToken}
+            offline={!isConnected}
+            onExit={() => {
+              // Drop the token from the URL so the app returns to normal use.
+              if (typeof window !== 'undefined' && window.history?.replaceState) {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('share');
+                window.history.replaceState({}, document.title, url.toString());
+              }
+              setShareTokenState(null);
+            }}
+          />
+        ) : authState === 'loading' ? (
           <View style={styles.centered}>
             <Text style={styles.loadingText}>Loading…</Text>
           </View>
