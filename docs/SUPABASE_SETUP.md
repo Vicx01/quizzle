@@ -300,21 +300,25 @@ Not needed for Phase 1; recorded so they are not discovered late.
 - **Edge Functions** — `supabase functions deploy <name>`. Each function's
   secrets are set with `supabase secrets set NAME=value`.
 
-  Two functions now exist for secure sharing and are documented in
-  `docs/SHARE_LINK_API.md`. They are **not deployed**. Deploy them with:
+  Three functions exist for secure sharing (`share-resolve`, `share-attempt`,
+  `share-links`) and are documented in `docs/SHARE_LINK_API.md`. **All three
+  were deployed on 2026-10-24** via the Supabase Management API. Because that
+  API takes a single source file, run `npm run functions:bundle` first (it
+  inlines `supabase/functions/_shared/` into `.deploy-bundle/`). With the CLI:
 
   ```bash
   supabase functions deploy share-resolve --no-verify-jwt
   supabase functions deploy share-attempt --no-verify-jwt
+  supabase functions deploy share-links
   ```
 
-  `--no-verify-jwt` is required: possession of the share token is the
-  authorisation, and a person taking a quiz has no session.
+  The first two run without JWT verification (possession of the share token is
+  the authorisation); `share-links` requires it.
 
   They are Deno code and are excluded from the app's `tsconfig.json` and ESLint
   config. Check them with `deno check supabase/functions/*/index.ts` before
-  deploying — Deno is not installed in every environment, so nothing else will
-  catch a type error.
+  redeploying — Deno is not installed in every environment, so nothing else
+  will catch a type error.
 
 - **AI provider credentials** — stored as Edge Function secrets only. They must
   never reach the client and never be written to any database row.

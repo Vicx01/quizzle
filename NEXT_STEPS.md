@@ -1,10 +1,10 @@
 # Quizzle — Next Steps
 
-**Current phase:** Supabase migration — Phase 6 (Secure sharing + server-side grading) is **IMPLEMENTED as two Edge Functions but NOT DEPLOYED and NEVER INVOKED**. Phases 4–5 are code-complete; **a real-browser Google sign-in remains outstanding**.
+**Current phase:** Supabase migration — Phase 6 (Secure sharing + server-side grading) is **DEPLOYED (2026-10-24)**: three Edge Functions (`share-resolve`, `share-attempt`, `share-links`) plus server-mediated link creation and the share/take-quiz UI. **A live end-to-end HTTP run has not been performed** (the sandbox cannot reach the Supabase host). Phases 4–5 are code-complete; **a real-browser Google sign-in remains outstanding** (credential rotation postponed, non-blocking).
 
 **Status:** The database foundation (Phases 1–3) is applied to the hosted project and verified on it. Supabase Auth is the only auth path in the code — the `EXPO_PUBLIC_AUTH_PROVIDER` switch is gone, `services/firebase.ts` is deleted, and no application code references Firebase. Every automated check passes. **A real Google OAuth flow has never been executed**, because this sandbox has no network path to Google or to the Supabase host.
 
-**Last updated:** 2026-10-23
+**Last updated:** 2026-10-24
 
 **Branch:** `arena/9131a5e6-quizzle`
 
@@ -163,7 +163,7 @@ Removing Firebase Auth took the bundle from 287 modules / 1.5 MB to 271 modules
 
 ---
 
-## Phase 6 — Secure sharing + server-side grading (IMPLEMENTED 2026-10-23)
+## Phase 6 — Secure sharing + server-side grading (IMPLEMENTED 2026-10-23; link creation + DEPLOYED 2026-10-24)
 
 Per `docs/SUPABASE_MIGRATION.md` §13:
 
@@ -172,12 +172,13 @@ Per `docs/SUPABASE_MIGRATION.md` §13:
 
 ### What was built
 
-Two Edge Functions, both running under the service-role key:
+Three Edge Functions, all running under the service-role key:
 
 | Function        | Path                                | Purpose                                                        |
 | --------------- | ----------------------------------- | -------------------------------------------------------------- |
 | `share-resolve` | `supabase/functions/share-resolve/` | Turns a share token into a quiz **without** its answer key.    |
 | `share-attempt` | `supabase/functions/share-attempt/` | Accepts answers, grades them server-side, records the attempt. |
+| `share-links`   | `supabase/functions/share-links/`   | Creates, revokes and lists share links (requires a JWT).       |
 
 The security-critical logic lives in tested shared modules rather than in the
 handlers, so every decision the handlers make is covered:
@@ -221,26 +222,36 @@ Unknown, expired, revoked, exhausted and soft-deleted all return the same 404.
 Distinguishing them would turn the endpoint into a token oracle that confirms
 which links were ever valid.
 
-### NOT deployed — a deliberate choice
+### Deployed 2026-10-24
 
-The functions are **not** on the hosted project. Reasons:
+All three functions are **ACTIVE on the hosted project** (`ppswtryoescehrytxvsh`):
 
-1. They have never been invoked, and this sandbox cannot reach the Supabase host
-   to invoke them.
-2. **There is no way to create a share link yet** — `share_links` rows are only
-   inserted by tests. Until link creation exists the functions are inert: every
-   request correctly resolves to a 404. Deploying buys nothing.
-3. Deno is not installed here, so the files are **not typechecked**.
+| Function        | verify_jwt | Why                                                                                                                                         |
+| --------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `share-resolve` | false      | Possession of the token is the authorisation; the taker has no session.                                                                     |
+| `share-attempt` | false      | Same.                                                                                                                                       |
+| `share-links`   | **true**   | Minting/revoking links needs a verified caller; identity is re-verified against GoTrue inside the function and ownership re-checked in SQL. |
 
-Deploy when ready:
+Deployment went through the Supabase Management API (MCP), which accepts a
+single source file per function, so `_shared/` modules are inlined by
+`scripts/bundle-functions.mjs` (`npm run functions:bundle`; output in
+`.deploy-bundle/`, git-ignored). The deployed bodies were read back and
+verified against the bundles. The migration
+`20261024075942_share_creation.sql` (`public.create_share_link`) is applied to
+the hosted project; `pg_proc` confirms SECURITY DEFINER with EXECUTE granted
+to `service_role` only.
 
-```bash
-supabase functions deploy share-resolve --no-verify-jwt
-supabase functions deploy share-attempt --no-verify-jwt
-```
+End-to-end on the client: History → Share mints a link (shown once), and
+`?share=<token>` opens the take-quiz screen ahead of the auth gate so an
+anonymous taker can participate; grading still happens only server-side.
 
-`--no-verify-jwt` is required: possession of the token is the authorisation and
-a taker has no session.
+**Still NOT live-tested over HTTP.** The sandbox cannot reach
+`ppswtryoescehrytxvsh.supabase.co`, so no function has been invoked through
+the real gateway. First live run (owner): sign in, share a quiz from History,
+open the link in a private window, take the quiz, and confirm the attempt is
+recorded. Deno is still not installed in the sandbox; the bundles instead
+passed TypeScript transpile + unresolved-name checks — run
+`deno check supabase/functions/*/index.ts` when Deno is available.
 
 ### Rate limiting is soft, and that is documented
 

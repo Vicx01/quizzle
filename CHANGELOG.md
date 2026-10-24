@@ -1559,3 +1559,60 @@ supabase functions deploy share-attempt --no-verify-jwt
 global guarantee. The authoritative limits are in the database:
 `share_links.max_access` incremented atomically, `expires_at`, and the 30-day
 window CHECK constraint.
+
+## 2026-10-24 — Phase 6 completed: share-link creation + deployment
+
+### Added
+
+- **Server-mediated share-link creation** — `public.create_share_link()`
+  (migration `20261024075942_share_creation.sql`, SECURITY DEFINER,
+  `service_role` only) hashes the raw token in SQL and re-checks quiz
+  ownership before inserting. The `share-links` Edge Function
+  (create/revoke/list) verifies the caller's JWT against GoTrue and checks
+  ownership up front; the SQL check is authoritative because the write path
+  bypasses RLS. `share_links` still has no client write policy.
+- **Share UI** — History screen Share dialog (create, list active links,
+  revoke; the raw token is shown exactly once), the `TakeQuiz` screen, and
+  `?share=<token>` routing in `App.tsx` that renders ahead of the auth gate so
+  anonymous takers can participate. Grading remains server-side only.
+- **Client service** `services/sharing.ts` wrapping the three functions.
+- **Deployment tooling** — `scripts/bundle-functions.mjs`
+  (`npm run functions:bundle`) inlines the `_shared/` modules for the
+  Management API's single-file deployment, guarding the shared-module list,
+  import-freeness and top-level name collisions. A defect found during
+  deployment (the external `npm:` import being stripped with the relative
+  ones) was fixed before anything shipped; bundles now pass TypeScript
+  transpile (0 syntax errors) and unresolved-name checks.
+- 7 new database tests for `create_share_link` (non-owner, soft-deleted,
+  short token, anon/authenticated `42501`, 30-day CHECK); the ownership check
+  was mutation-tested.
+
+### Deployed (2026-10-24)
+
+- Migration applied to the hosted project; `pg_proc` confirms all three share
+  primitives (`resolve_share_link`, `record_share_access`,
+  `create_share_link`) are SECURITY DEFINER with EXECUTE = `service_role`
+  only.
+- `share-resolve` and `share-attempt` ACTIVE with `verify_jwt=false`;
+  `share-links` ACTIVE with `verify_jwt=true`. Deployed bodies were read back
+  and verified; project health green.
+
+### Results
+
+| Check        | Before          | After                  |
+| ------------ | --------------- | ---------------------- |
+| App (`jest`) | 197 / 17 suites | 197 passed / 17 suites |
+| Database     | 106             | **113 passed**         |
+| Typecheck    | clean           | clean                  |
+| Lint         | 0 errors        | 0 errors, 7 warnings   |
+| Prettier     | clean           | clean                  |
+| Web bundle   | 277 modules     | 279 modules            |
+
+### NOT verified
+
+- **No live HTTP invocation yet.** The sandbox cannot reach
+  `ppswtryoescehrytxvsh.supabase.co`; the first end-to-end run (create link →
+  open anonymously → submit → graded attempt recorded) is an owner action.
+- **Deno still unavailable** (its release binary redirects to a blocked
+  host), so `deno check` has not been run. The bundles passed TypeScript
+  transpile and unresolved-name checks instead.

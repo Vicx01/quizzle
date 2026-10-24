@@ -1,21 +1,24 @@
 # Shared quizzes — server-side API contract
 
-**Status: IMPLEMENTED as two Supabase Edge Functions, NOT yet deployed or executed.**
+**Status: IMPLEMENTED as three Supabase Edge Functions and DEPLOYED (2026-10-24). Not yet exercised over live HTTP — see "Verification status".**
 
-| Endpoint                  | Source                              | Status                      |
-| ------------------------- | ----------------------------------- | --------------------------- |
-| Resolve a share link      | `supabase/functions/share-resolve/` | Implemented, **unexecuted** |
-| Submit + grade an attempt | `supabase/functions/share-attempt/` | Implemented, **unexecuted** |
+| Endpoint                     | Source                              | Status                      |
+| ---------------------------- | ----------------------------------- | --------------------------- |
+| Resolve a share link         | `supabase/functions/share-resolve/` | Deployed, **live-untested** |
+| Submit + grade an attempt    | `supabase/functions/share-attempt/` | Deployed, **live-untested** |
+| Create / revoke / list links | `supabase/functions/share-links/`   | Deployed, **live-untested** |
 
 The document below is the contract those functions implement. Every requirement
 in it is met in code, and the security-critical parts (the response allowlist,
 server-side grading, and the one-generic-404 rule) are covered by **24 unit
-tests** in `tests/functions/share.test.ts` and **10 database tests** in
+tests** in `tests/functions/share.test.ts` and **17 database tests** in
 `tests/database/share.test.mjs`.
 
-**Nothing has been run against the hosted project.** The functions are not
-deployed, and this environment cannot reach the Supabase host to invoke them
-even if they were. See "Verification status" at the end.
+The functions **are deployed** to the hosted project (2026-10-24) together
+with the `create_share_link` migration, and the deployed bodies were read
+back and verified. This sandbox still cannot reach the Supabase host over
+HTTP, so **no live invocation has been performed from here**. See
+"Verification status" at the end.
 
 ---
 
@@ -192,38 +195,54 @@ through the Admin SDK.
 
 ## Verification status
 
-**NOT executed.** Distinguish carefully:
+**Deployed, but not yet exercised over live HTTP.** Distinguish carefully:
 
 - **Verified** — 24 unit tests over the allowlist, grading, validation, token
-  handling and rate limiting; 10 executed database tests proving the underlying
-  SQL primitives behave, including that `resolve_share_link` and
-  `record_share_access` are callable **only** by `service_role` (both anon and
-  authenticated are refused with `42501`). The authenticated case was
-  mutation-tested: granting it makes the test fail.
-- **NOT verified** — the functions have never been invoked. They are not
-  deployed, and this sandbox cannot reach `ppswtryoescehrytxvsh.supabase.co` to
-  call them. Request handling, cold-start behaviour, CORS in the real gateway,
-  and the `SUPABASE_SERVICE_ROLE_KEY` wiring are all unproven.
-- **NOT typechecked** — Deno is not installed in this environment. The
-  functions are excluded from the app's tsconfig and ESLint config; run
-  `deno check supabase/functions/*/index.ts` before deploying.
+  handling and rate limiting; 17 executed database tests proving the
+  underlying SQL primitives behave, including that `resolve_share_link`,
+  `record_share_access` and `create_share_link` are callable **only** by
+  `service_role` (both anon and authenticated are refused with `42501`) and
+  that `create_share_link` refuses non-owners. The authenticated-caller case
+  and the ownership check were mutation-tested.
+- **Verified on the hosted project** — the migration is applied
+  (`20261024075942_share_creation`); all three primitives are SECURITY
+  DEFINER with EXECUTE granted to `service_role` only (checked via
+  `pg_proc`); all three Edge Functions are ACTIVE and their bodies were read
+  back and compared with the tested bundles; project health is green.
+- **NOT verified** — no function has been invoked through the real gateway.
+  This sandbox cannot reach `ppswtryoescehrytxvsh.supabase.co` over HTTP, so
+  request handling, cold-start behaviour, CORS in the real gateway, and the
+  `SUPABASE_SERVICE_ROLE_KEY` wiring at runtime remain unproven until the
+  owner's first live run.
+- **NOT typechecked with Deno** — Deno is not installed in this environment
+  (its release binary redirects to a blocked host). The deployed bundles
+  instead passed TypeScript transpile (0 syntax errors) and an
+  unresolved-name check (0 non-global names). Run
+  `deno check supabase/functions/*/index.ts` when Deno is available.
 
-### Deploying
+### Deployment
+
+Deployed 2026-10-24 via the Supabase Management API (MCP). That API accepts
+a single source file, so `npm run functions:bundle`
+(`scripts/bundle-functions.mjs`) inlines the `_shared/` modules into
+`.deploy-bundle/<slug>/index.ts` first. To redeploy with the CLI instead:
 
 ```bash
-supabase functions deploy share-resolve
-supabase functions deploy share-attempt
+supabase functions deploy share-resolve --no-verify-jwt
+supabase functions deploy share-attempt --no-verify-jwt
+supabase functions deploy share-links
 ```
 
-Both must run **without** JWT verification — possession of the share token is
-the authorisation, and a taker has no session. With the CLI this means
-`--no-verify-jwt`; in the dashboard, uncheck "Enforce JWT verification".
+`share-resolve` and `share-attempt` run **without** JWT verification —
+possession of the share token is the authorisation, and a taker has no
+session. `share-links` runs **with** JWT verification.
 
-Once deployed, add the app origin to `ALLOWED_ORIGINS` if it is not one of the
-defaults in `supabase/functions/_shared/respond.ts`.
+Add the app origin to `ALLOWED_ORIGINS` if it is not one of the defaults in
+`supabase/functions/_shared/respond.ts`.
 
-### Still missing before sharing works end to end
+### End-to-end path
 
-There is **no way to create a share link yet**. `share_links` rows are inserted
-directly by tests; no screen or endpoint mints one. Until link creation exists,
-these functions are inert — every request resolves to a 404, correctly.
+Link creation now exists: `share-links` mints links for the quiz owner, the
+History screen exposes create/list/revoke, and `?share=<token>` opens the
+take-quiz screen. What remains is the first live end-to-end run against the
+deployed functions (this sandbox cannot reach the Supabase host over HTTP).

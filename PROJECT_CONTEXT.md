@@ -1,6 +1,6 @@
 # Quizzle — Project Context
 
-**Status:** Database layer migrated to Supabase PostgreSQL (deployed and verified). **Supabase Auth is the sole authentication provider — Firebase Auth has been removed.** **Owner quiz persistence is implemented (Phase 5).** **Secure sharing + server-side grading is implemented as two Edge Functions (Phase 6), tested but NOT deployed and never invoked.** Backend/AI not implemented — quiz _generation_ is still unconnected. Awaiting accessibility/visual review before AI-provider integration.
+**Status:** Database layer migrated to Supabase PostgreSQL (deployed and verified). **Supabase Auth is the sole authentication provider — Firebase Auth has been removed.** **Owner quiz persistence is implemented (Phase 5).** **Secure sharing + server-side grading (Phase 6) is implemented as three Edge Functions and DEPLOYED (2026-10-24), including server-mediated share-link creation and the share/take-quiz UI; a live end-to-end HTTP run is still pending (the sandbox cannot reach the Supabase host).** Backend/AI not implemented — quiz _generation_ is still unconnected. Awaiting accessibility/visual review before AI-provider integration.
 **Last updated:** 2026-10-23
 **Branch:** `arena/9131a5e6-quizzle`
 
